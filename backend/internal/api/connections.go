@@ -20,9 +20,13 @@ func newID() string {
 }
 
 func (s *Server) listConnections(w http.ResponseWriter, r *http.Request) {
+	p := principalFrom(r)
 	conns := s.store.List()
 	out := make([]model.PublicConnection, 0, len(conns))
 	for _, c := range conns {
+		if !p.allows(c.ID) {
+			continue
+		}
 		out = append(out, c.Public())
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -39,10 +43,17 @@ func (s *Server) getConnection(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, status, err)
 		return
 	}
+	if !principalFrom(r).allows(c.ID) {
+		writeErr(w, http.StatusForbidden, errString("not allowed to access this connection"))
+		return
+	}
 	writeJSON(w, http.StatusOK, c.Public())
 }
 
 func (s *Server) createConnection(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	var c model.Connection
 	if err := decode(r, &c); err != nil {
 		writeErr(w, http.StatusBadRequest, err)
@@ -79,6 +90,9 @@ func (s *Server) createConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updateConnection(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	old, err := s.store.Get(id)
 	if err != nil {
@@ -106,6 +120,9 @@ func (s *Server) updateConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteConnection(w http.ResponseWriter, r *http.Request) {
+	if !s.requireAdmin(w, r) {
+		return
+	}
 	id := r.PathValue("id")
 	if err := s.store.Delete(id); err != nil {
 		status := http.StatusInternalServerError

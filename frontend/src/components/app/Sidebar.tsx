@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useIsDesktop } from "@/hooks/useMediaQuery";
 import type { Connection } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -68,6 +69,9 @@ export function Sidebar() {
   const keysScanned = useAppStore((s) => s.keysScanned);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const sidebarWidth = useAppStore((s) => s.sidebarWidth);
+  const isDesktop = useIsDesktop();
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Connection | null>(null);
@@ -145,11 +149,13 @@ export function Sidebar() {
       />
       <aside
         className={cn(
-          "flex w-72 shrink-0 flex-col border-r bg-sidebar",
+          "flex w-72 shrink-0 flex-col border-r bg-sidebar max-md:max-w-[85vw]",
           "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:shadow-xl max-md:transition-transform max-md:duration-200",
           sidebarOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full",
           "md:relative md:translate-x-0",
+          isDesktop && sidebarCollapsed && "md:hidden",
         )}
+        style={isDesktop ? { width: sidebarWidth } : undefined}
       >
       <div className="flex h-10 items-center justify-between border-b px-3">
         <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">

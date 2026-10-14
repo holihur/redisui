@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"redisui/internal/account"
 )
 
 func newAuthHandler(token string) http.Handler {
@@ -112,16 +115,37 @@ func TestReadOnlyToken(t *testing.T) {
 	}
 }
 
-func TestAuthenticateRoles(t *testing.T) {
-	s := &Server{authToken: "full", readOnlyToken: "ro"}
-	if role, ok := s.authenticate("full"); !ok || role != roleFull {
-		t.Fatalf("full token -> %q %v", role, ok)
+func TestResolvePrincipalRoles(t *testing.T) {
+	s := &Server{authToken: "full", readOnlyToken: "ro", logins: account.NewSessionManager(time.Hour)}
+
+	if p, ok := s.resolvePrincipal("full"); !ok || p.Role != account.RoleAdmin || !p.Root {
+		t.Fatalf("full token -> %+v %v", p, ok)
 	}
-	if role, ok := s.authenticate("ro"); !ok || role != roleReadOnly {
-		t.Fatalf("read-only token -> %q %v", role, ok)
+	if p, ok := s.resolvePrincipal("ro"); !ok || p.Role != account.RoleViewer {
+		t.Fatalf("read-only token -> %+v %v", p, ok)
 	}
-	if _, ok := s.authenticate("x"); ok {
+	if _, ok := s.resolvePrincipal("x"); ok {
 		t.Fatal("unknown token should not authenticate")
+	}
+
+	token, _ := s.logins.Create(account.User{Username: "alice", Role: account.RoleOperator, Connections: []string{"c1"}})
+	p, ok := s.resolvePrincipal(token)
+	if !ok || p.Username != "alice" || p.Role != account.RoleOperator {
+		t.Fatalf("session -> %+v %v", p, ok)
+	}
+	if !p.allows("c1") || p.allows("c2") {
+		t.Fatalf("scope not enforced: %+v", p)
+	}
+}
+
+func TestAdminScope(t *testing.T) {
+	admin := principal{Role: account.RoleAdmin, Root: true}
+	if !admin.allows("anything") || !admin.isAdmin() {
+		t.Fatal("root admin should allow everything")
+	}
+	scoped := principal{Role: account.RoleOperator, Connections: []string{"a"}}
+	if !scoped.allows("a") || scoped.allows("b") || scoped.isAdmin() {
+		t.Fatalf("scoped operator wrong: %+v", scoped)
 	}
 }
 

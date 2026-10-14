@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { formatBytes, formatTTL, typeColor, typeLabel } from "@/lib/format";
 import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -53,6 +54,8 @@ export function KeyDetail() {
   const loadMoreDetail = useAppStore((s) => s.loadMoreDetail);
   const selectKey = useAppStore((s) => s.selectKey);
   const afterMutation = useAppStore((s) => s.afterMutation);
+  const detailWidth = useAppStore((s) => s.detailWidth);
+  const isDesktop = useIsDesktop();
 
   const [busy, setBusy] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -161,7 +164,10 @@ export function KeyDetail() {
   };
 
   return (
-    <section className="flex w-full shrink-0 flex-col border-t bg-card md:w-[32rem] md:max-w-[50%] md:border-t-0 md:border-l">
+    <section
+      className="flex w-full shrink-0 flex-col border-t bg-card md:max-w-none md:border-t-0 md:border-l"
+      style={isDesktop ? { width: detailWidth } : undefined}
+    >
       <div className="flex shrink-0 items-start gap-2 border-b px-3 py-2">
         <Button
           variant="ghost"

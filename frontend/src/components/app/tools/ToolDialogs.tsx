@@ -6,6 +6,7 @@ import { ClientsDialog } from "./ClientsDialog";
 import { PubSubDialog } from "./PubSubDialog";
 import { MonitorDialog } from "./MonitorDialog";
 import { SearchDialog } from "./SearchDialog";
+import { UsersDialog } from "./UsersDialog";
 
 /** Renders whichever diagnostic tool panel is currently active. */
 export function ToolDialogs() {
@@ -24,6 +25,7 @@ export function ToolDialogs() {
       <PubSubDialog open={open("pubsub")} onOpenChange={onChange("pubsub")} />
       <MonitorDialog open={open("monitor")} onOpenChange={onChange("monitor")} />
       <SearchDialog open={open("search")} onOpenChange={onChange("search")} />
+      <UsersDialog open={open("users")} onOpenChange={onChange("users")} />
     </>
   );
 }

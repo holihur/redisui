@@ -71,6 +71,8 @@ export function KeyBrowser({ className }: { className?: string }) {
   const loadMoreKeys = useAppStore((s) => s.loadMoreKeys);
   const selectKey = useAppStore((s) => s.selectKey);
   const afterMutation = useAppStore((s) => s.afterMutation);
+  const role = useAppStore((s) => s.role);
+  const canWrite = role !== "viewer";
 
   const [search, setSearch] = useState("*");
   const debounced = useDebounce(search, 350);
@@ -163,16 +165,18 @@ export function KeyBrowser({ className }: { className?: string }) {
           variant="ghost"
           size="icon-sm"
           onClick={() => setDeleteOpen(true)}
-          disabled={!selectedKey}
+          disabled={!canWrite || !selectedKey}
           title="Delete selected key"
         >
           <Trash2 className="size-4" />
         </Button>
 
-        <Button size="sm" onClick={() => setNewKeyOpen(true)}>
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">New</span>
-        </Button>
+        {canWrite ? (
+          <Button size="sm" onClick={() => setNewKeyOpen(true)}>
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">New</span>
+          </Button>
+        ) : null}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -185,18 +189,24 @@ export function KeyBrowser({ className }: { className?: string }) {
               <Download className="size-4" />
               Export keys…
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setImportOpen(true)}>
-              <Upload className="size-4" />
-              Import keys…
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setBulkOpen(true)}
-            >
-              <Trash2 className="size-4" />
-              Delete by pattern…
-            </DropdownMenuItem>
+            {canWrite ? (
+              <DropdownMenuItem onSelect={() => setImportOpen(true)}>
+                <Upload className="size-4" />
+                Import keys…
+              </DropdownMenuItem>
+            ) : null}
+            {canWrite ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setBulkOpen(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete by pattern…
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

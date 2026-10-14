@@ -4,6 +4,8 @@ import {
   Info,
   Menu,
   Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Radar,
   Radio,
@@ -22,6 +24,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -43,6 +46,9 @@ export function AppHeader() {
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const setActiveTool = useAppStore((s) => s.setActiveTool);
   const role = useAppStore((s) => s.role);
+  const username = useAppStore((s) => s.username);
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar px-2 sm:px-3">
@@ -54,6 +60,21 @@ export function AppHeader() {
         onClick={() => setSidebarOpen(true)}
       >
         <Menu className="size-4" />
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="hidden shrink-0 md:inline-flex"
+        aria-label={sidebarCollapsed ? "Show connections" : "Hide connections"}
+        title={sidebarCollapsed ? "Show connections" : "Hide connections"}
+        onClick={toggleSidebar}
+      >
+        {sidebarCollapsed ? (
+          <PanelLeftOpen className="size-4" />
+        ) : (
+          <PanelLeftClose className="size-4" />
+        )}
       </Button>
 
       <div className="hidden items-center gap-2 sm:flex">
@@ -78,12 +99,16 @@ export function AppHeader() {
               {session.mode}
             </Badge>
           ) : null}
-          {role === "readonly" ? (
+          {role !== "admin" ? (
             <Badge
               variant="outline"
-              className="shrink-0 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+              className={
+                role === "viewer"
+                  ? "shrink-0 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+                  : "shrink-0 border-sky-500/40 text-[10px] text-sky-600 dark:text-sky-400"
+              }
             >
-              read-only
+              {role}
             </Badge>
           ) : null}
           {session.tls ? (
@@ -170,6 +195,15 @@ export function AppHeader() {
               <Search className="size-4" />
               Search (RediSearch)
             </DropdownMenuItem>
+            {role === "admin" ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setActiveTool("users")}>
+                  <Users className="size-4" />
+                  Users
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -186,6 +220,12 @@ export function AppHeader() {
           <TooltipContent>Toggle theme</TooltipContent>
         </Tooltip>
 
+        {username ? (
+          <span className="hidden max-w-28 truncate text-xs text-muted-foreground lg:inline">
+            {username}
+          </span>
+        ) : null}
+
         <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
 
         {session ? (
@@ -195,10 +235,12 @@ export function AppHeader() {
           </Button>
         ) : null}
 
-        <Button size="sm" onClick={() => openConnectionDialog(null)}>
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">Connection</span>
-        </Button>
+        {role === "admin" ? (
+          <Button size="sm" onClick={() => openConnectionDialog(null)}>
+            <Plus className="size-4" />
+            <span className="hidden sm:inline">Connection</span>
+          </Button>
+        ) : null}
       </div>
     </header>
   );

@@ -23,11 +23,24 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request) (*redisclient.S
 		writeErr(w, status, err)
 		return nil, false
 	}
+	if !principalFrom(r).allows(sess.ConnID) {
+		writeErr(w, http.StatusForbidden, errString("not allowed to access this connection"))
+		return nil, false
+	}
 	return sess, true
 }
 
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, s.sessions.List())
+	p := principalFrom(r)
+	all := s.sessions.List()
+	out := make([]map[string]any, 0, len(all))
+	for _, info := range all {
+		connID, _ := info["connId"].(string)
+		if p.allows(connID) {
+			out = append(out, info)
+		}
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) openSession(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +48,10 @@ func (s *Server) openSession(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.store.Get(id)
 	if err != nil {
 		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+	if !principalFrom(r).allows(conn.ID) {
+		writeErr(w, http.StatusForbidden, errString("not allowed to access this connection"))
 		return
 	}
 

@@ -8,6 +8,8 @@ import { Sidebar } from "@/components/app/Sidebar";
 import { KeyBrowser } from "@/components/app/KeyBrowser";
 import { KeyDetail } from "@/components/app/KeyDetail";
 import { CommandConsole } from "@/components/app/CommandConsole";
+import { Resizer } from "@/components/app/Resizer";
+import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -75,6 +77,10 @@ export default function App() {
   const serverInfoOpen = useAppStore((s) => s.serverInfoOpen);
   const activeTool = useAppStore((s) => s.activeTool);
   const connectionDialogOpen = useAppStore((s) => s.connectionDialogOpen);
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const adjustSidebarWidth = useAppStore((s) => s.adjustSidebarWidth);
+  const adjustDetailWidth = useAppStore((s) => s.adjustDetailWidth);
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     void loadConnections();
@@ -97,11 +103,17 @@ export default function App() {
         <AppHeader />
         <div className="flex min-h-0 flex-1">
           <Sidebar />
+          {isDesktop && !sidebarCollapsed ? (
+            <Resizer onResize={adjustSidebarWidth} />
+          ) : null}
           <main className="flex min-w-0 flex-1 flex-col">
             {session ? (
               <>
                 <div className="flex min-h-0 flex-1">
                   <KeyBrowser className={cn(selectedKey && "max-md:hidden")} />
+                  {isDesktop && selectedKey ? (
+                    <Resizer onResize={(d) => adjustDetailWidth(-d)} />
+                  ) : null}
                   <KeyDetail />
                 </div>
                 <CommandConsole />

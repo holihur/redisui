@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"redisui/internal/account"
 	"redisui/internal/api"
 	"redisui/internal/secret"
 	"redisui/internal/session"
@@ -43,6 +44,13 @@ func main() {
 	}
 	log.Printf("credential encryption: %s", keySource)
 
+	// --- accounts ----------------------------------------------------------
+	accounts, err := account.New(filepath.Join(*dataDir, "users.json"))
+	if err != nil {
+		log.Fatalf("open accounts: %v", err)
+	}
+	multiUser := accounts.Count() > 0
+
 	// --- access token ------------------------------------------------------
 	requireAuth := !*noAuth
 	token := ""
@@ -59,12 +67,17 @@ func main() {
 		}
 	}
 
-	if !requireAuth {
+	if !requireAuth && !multiUser {
 		log.Printf("WARNING: authentication is disabled (-no-auth). Anyone who can reach %s can control your Redis servers.", *addr)
 	} else if isPubliclyBound(*addr) {
-		log.Printf("remote access enabled on %s; keep this token secret.", *addr)
-		log.Printf("access token: %s", token)
-		log.Printf("(also stored at %s; set -auth-token or REDISUI_AUTH_TOKEN to override)", filepath.Join(*dataDir, "token"))
+		log.Printf("remote access enabled on %s; keep credentials secret.", *addr)
+		if requireAuth {
+			log.Printf("access token: %s", token)
+			log.Printf("(also stored at %s; set -auth-token or REDISUI_AUTH_TOKEN to override)", filepath.Join(*dataDir, "token"))
+		}
+		if multiUser {
+			log.Printf("multi-user enabled: %d account(s) in %s", accounts.Count(), filepath.Join(*dataDir, "users.json"))
+		}
 	}
 
 	roToken := ""
@@ -100,7 +113,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           api.New(st, mgr, *staticDir, api.Options{AuthToken: token, ReadOnlyToken: roToken, CORSOrigin: *corsOrigin, TrustProxy: *trustProxy}),
+		Handler:           api.New(st, mgr, *staticDir, api.Options{AuthToken: token, ReadOnlyToken: roToken, Accounts: accounts, CORSOrigin: *corsOrigin, TrustProxy: *trustProxy}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

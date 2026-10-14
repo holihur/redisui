@@ -9,7 +9,7 @@ import type {
   SessionInfo,
 } from "@/lib/types";
 import type { RedisTypeFilter } from "@/lib/format";
-import type { ToolKey } from "@/lib/types";
+import type { ToolKey, UserRole } from "@/lib/types";
 
 interface AppState {
   connections: Connection[];
@@ -38,7 +38,12 @@ interface AppState {
   serverInfoOpen: boolean;
   sidebarOpen: boolean;
   activeTool: ToolKey | null;
-  role: "full" | "readonly";
+  role: UserRole;
+  username: string;
+  allowedConnections: string[];
+  sidebarCollapsed: boolean;
+  sidebarWidth: number;
+  detailWidth: number;
 
   connectionDialogOpen: boolean;
   editingConnection: Connection | null;
@@ -62,12 +67,45 @@ interface AppState {
   setServerInfoOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setActiveTool: (tool: ToolKey | null) => void;
-  setRole: (role: "full" | "readonly") => void;
+  setPrincipal: (p: {
+    username: string;
+    role: UserRole;
+    connections: string[];
+  }) => void;
+  toggleSidebar: () => void;
+  adjustSidebarWidth: (delta: number) => void;
+  adjustDetailWidth: (delta: number) => void;
 }
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 const PAGE_SIZE = 200;
+
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 480;
+const DETAIL_MIN = 320;
+const DETAIL_MAX = 900;
+
+const lsGet = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const lsSet = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore (private mode)
+  }
+};
+const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+const loadNum = (key: string, def: number, min: number, max: number) => {
+  const raw = lsGet(key);
+  const n = raw === null ? NaN : Number(raw);
+  return Number.isFinite(n) ? clamp(n, min, max) : def;
+};
 
 export const useAppStore = create<AppState>((set, get) => ({
   connections: [],
@@ -96,7 +134,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   serverInfoOpen: false,
   sidebarOpen: false,
   activeTool: null,
-  role: "full",
+  role: "admin",
+  username: "",
+  allowedConnections: [],
+  sidebarCollapsed: lsGet("redisui.sidebarCollapsed") === "1",
+  sidebarWidth: loadNum("redisui.sidebarWidth", 288, SIDEBAR_MIN, SIDEBAR_MAX),
+  detailWidth: loadNum("redisui.detailWidth", 512, DETAIL_MIN, DETAIL_MAX),
 
   connectionDialogOpen: false,
   editingConnection: null,
@@ -316,7 +359,31 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ activeTool: tool });
   },
 
-  setRole(role: "full" | "readonly") {
-    set({ role });
+  setPrincipal(p: { username: string; role: UserRole; connections: string[] }) {
+    set({ username: p.username, role: p.role, allowedConnections: p.connections });
+  },
+
+  toggleSidebar() {
+    set((s) => {
+      const next = !s.sidebarCollapsed;
+      lsSet("redisui.sidebarCollapsed", next ? "1" : "0");
+      return { sidebarCollapsed: next };
+    });
+  },
+
+  adjustSidebarWidth(delta: number) {
+    set((s) => {
+      const next = clamp(s.sidebarWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
+      lsSet("redisui.sidebarWidth", String(next));
+      return { sidebarWidth: next };
+    });
+  },
+
+  adjustDetailWidth(delta: number) {
+    set((s) => {
+      const next = clamp(s.detailWidth + delta, DETAIL_MIN, DETAIL_MAX);
+      lsSet("redisui.detailWidth", String(next));
+      return { detailWidth: next };
+    });
   },
 }));

@@ -10,9 +10,11 @@ import type {
   KeyDetail,
   KeyInfo,
   IndexInfo,
+  LoginResult,
   MemoryReport,
   ModuleInfo,
   Mutation,
+  PublicUser,
   SchemaField,
   SearchResult,
   ServerInfo,
@@ -99,10 +101,51 @@ const qs = (params: Record<string, string | number | boolean | undefined>) => {
 export const api = {
   health: () => request<{ status: string }>("/health"),
 
-  authStatus: () => request<{ required: boolean }>("/auth/status"),
+  authStatus: () =>
+    request<{ required: boolean; multiUser: boolean }>("/auth/status"),
   authVerify: () =>
-    request<{ ok: boolean; role: "full" | "readonly" }>("/auth/verify", {
+    request<{
+      ok: boolean;
+      username: string;
+      role: "admin" | "operator" | "viewer" | "full" | "readonly";
+      connections: string[];
+    }>("/auth/verify", { method: "POST" }),
+  login: (username: string, password: string) =>
+    request<LoginResult>("/auth/login", {
       method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  me: () =>
+    request<{
+      username: string;
+      role: string;
+      connections: string[];
+      root: boolean;
+    }>("/auth/me"),
+
+  listUsers: () => request<{ users: PublicUser[] }>("/users"),
+  createUser: (input: {
+    username: string;
+    password: string;
+    role: string;
+    connections: string[];
+  }) =>
+    request<PublicUser>("/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateUser: (
+    username: string,
+    input: { role?: string; connections?: string[]; password?: string },
+  ) =>
+    request<PublicUser>(`/users/${encodeURIComponent(username)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deleteUser: (username: string) =>
+    request<{ ok: boolean }>(`/users/${encodeURIComponent(username)}`, {
+      method: "DELETE",
     }),
 
   listConnections: () => request<Connection[]>("/connections"),

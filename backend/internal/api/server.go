@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"redisui/internal/account"
 	"redisui/internal/session"
 	"redisui/internal/store"
 )
@@ -19,6 +20,8 @@ import (
 type Server struct {
 	store         *store.Store
 	sessions      *session.Manager
+	accounts      *account.Store
+	logins        *account.SessionManager
 	authToken     string
 	readOnlyToken string
 	limiter       *authLimiter
@@ -31,6 +34,8 @@ type Options struct {
 	AuthToken string
 	// ReadOnlyToken grants read-only access when non-empty.
 	ReadOnlyToken string
+	// Accounts enables multi-user login when non-nil.
+	Accounts *account.Store
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -42,6 +47,8 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	s := &Server{
 		store:         st,
 		sessions:      mgr,
+		accounts:      opts.Accounts,
+		logins:        account.NewSessionManager(12 * time.Hour),
 		authToken:     opts.AuthToken,
 		readOnlyToken: opts.ReadOnlyToken,
 		limiter:       newAuthLimiter(),
@@ -52,6 +59,14 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("GET /api/health", s.health)
 	mux.HandleFunc("GET /api/auth/status", s.authStatus)
 	mux.HandleFunc("POST /api/auth/verify", s.authVerify)
+	mux.HandleFunc("POST /api/auth/login", s.authLogin)
+	mux.HandleFunc("POST /api/auth/logout", s.authLogout)
+	mux.HandleFunc("GET /api/auth/me", s.authMe)
+
+	mux.HandleFunc("GET /api/users", s.listUsers)
+	mux.HandleFunc("POST /api/users", s.createUser)
+	mux.HandleFunc("PUT /api/users/{username}", s.updateUser)
+	mux.HandleFunc("DELETE /api/users/{username}", s.deleteUser)
 
 	mux.HandleFunc("GET /api/connections", s.listConnections)
 	mux.HandleFunc("POST /api/connections", s.createConnection)

@@ -1,37 +1,60 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Database, KeyRound, Loader2, ShieldAlert } from "lucide-react";
+import { Database, KeyRound, Loader2, LogIn, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api";
+import type { UserRole } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
+function normalizeRole(r: string): UserRole {
+  if (r === "full") return "admin";
+  if (r === "readonly") return "viewer";
+  return r === "operator" || r === "viewer" || r === "admin" ? r : "admin";
+}
+
 /**
- * TokenGate blocks the app until the server confirms access. When the server
- * runs without authentication it passes straight through, so the same build
- * works for local and remote deployments.
+ * Blocks the app until the server confirms access. Supports either a shared
+ * access token or (when enabled) username/password login, then records the
+ * principal (role + connection scope) in the store.
  */
 export function TokenGate({ children }: { children: ReactNode }) {
+  const setPrincipal = useAppStore((s) => s.setPrincipal);
   const [state, setState] = useState<"loading" | "locked" | "ready">("loading");
+  const [multiUser, setMultiUser] = useState(false);
+  const [tab, setTab] = useState<"login" | "token">("token");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const setRole = useAppStore((s) => s.setRole);
+
+  const apply = useCallback(
+    (p: { username?: string; role: string; connections?: string[] }) => {
+      setPrincipal({
+        username: p.username ?? "",
+        role: normalizeRole(p.role),
+        connections: p.connections ?? [],
+      });
+      setState("ready");
+    },
+    [setPrincipal],
+  );
 
   const check = useCallback(async () => {
     setError("");
     try {
-      const { required } = await api.authStatus();
-      if (!required) {
-        setRole("full");
-        setState("ready");
+      const status = await api.authStatus();
+      setMultiUser(status.multiUser);
+      if (!status.required) {
+        apply({ role: "admin" });
         return;
       }
+      if (status.multiUser) setTab("login");
       if (getAuthToken()) {
         try {
           const res = await api.authVerify();
-          setRole(res.role ?? "full");
-          setState("ready");
+          apply(res);
           return;
         } catch {
           clearAuthToken();
@@ -42,7 +65,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       setError(e instanceof Error ? e.message : "Cannot reach the server");
       setState("locked");
     }
-  }, [setRole]);
+  }, [apply]);
 
   useEffect(() => {
     void check();
@@ -68,7 +91,24 @@ export function TokenGate({ children }: { children: ReactNode }) {
 
   if (state === "ready") return <>{children}</>;
 
-  const submit = async (e: FormEvent) => {
+  const submitLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api.login(username.trim(), password);
+      setAuthToken(res.token);
+      apply(res);
+    } catch (err) {
+      clearAuthToken();
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitToken = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
     setBusy(true);
@@ -76,8 +116,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
     setAuthToken(input.trim());
     try {
       const res = await api.authVerify();
-      setRole(res.role ?? "full");
-      setState("ready");
+      apply(res);
     } catch (err) {
       clearAuthToken();
       setError(err instanceof Error ? err.message : "Invalid access token");
@@ -86,12 +125,11 @@ export function TokenGate({ children }: { children: ReactNode }) {
     }
   };
 
+  const showTabs = multiUser;
+
   return (
     <div className="flex h-svh items-center justify-center bg-background p-4 text-foreground">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm"
-      >
+      <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-lg bg-red-500/15 text-red-500">
             <Database className="size-5" />
@@ -99,52 +137,120 @@ export function TokenGate({ children }: { children: ReactNode }) {
           <div>
             <h1 className="text-base font-semibold">RedisUI</h1>
             <p className="text-xs text-muted-foreground">
-              Enter the access token to continue
+              {showTabs && tab === "login"
+                ? "Sign in to continue"
+                : "Enter the access token to continue"}
             </p>
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="access-token">Access token</Label>
-          <Input
-            id="access-token"
-            type="password"
-            autoFocus
-            autoComplete="off"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Paste the token from the server log"
-            className="font-mono"
-          />
-        </div>
-
-        {error ? (
-          <p className="mt-3 text-xs text-destructive">{error}</p>
+        {showTabs ? (
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">
+            <button
+              type="button"
+              onClick={() => setTab("login")}
+              className={`rounded-md px-3 py-1.5 transition-colors ${
+                tab === "login"
+                  ? "bg-background font-medium shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("token")}
+              className={`rounded-md px-3 py-1.5 transition-colors ${
+                tab === "token"
+                  ? "bg-background font-medium shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Access token
+            </button>
+          </div>
         ) : null}
 
-        <Button
-          type="submit"
-          className="mt-4 w-full"
-          disabled={busy || !input.trim()}
-        >
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <KeyRound className="size-4" />
-          )}
-          Unlock
-        </Button>
+        {tab === "login" && showTabs ? (
+          <form onSubmit={submitLogin}>
+            <div className="grid gap-2">
+              <Label htmlFor="login-user">Username</Label>
+              <Input
+                id="login-user"
+                autoFocus
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+            <div className="mt-3 grid gap-2">
+              <Label htmlFor="login-pass">Password</Label>
+              <Input
+                id="login-pass"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {error ? (
+              <p className="mt-3 text-xs text-destructive">{error}</p>
+            ) : null}
+            <Button
+              type="submit"
+              className="mt-4 w-full"
+              disabled={busy || !username.trim() || !password}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <LogIn className="size-4" />
+              )}
+              Sign in
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={submitToken}>
+            <div className="grid gap-2">
+              <Label htmlFor="access-token">Access token</Label>
+              <Input
+                id="access-token"
+                type="password"
+                autoFocus
+                autoComplete="off"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Paste the token from the server log"
+                className="font-mono"
+              />
+            </div>
+            {error ? (
+              <p className="mt-3 text-xs text-destructive">{error}</p>
+            ) : null}
+            <Button
+              type="submit"
+              className="mt-4 w-full"
+              disabled={busy || !input.trim()}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <KeyRound className="size-4" />
+              )}
+              Unlock
+            </Button>
+          </form>
+        )}
 
         <p className="mt-4 flex items-start gap-1.5 text-[11px] text-muted-foreground">
           <ShieldAlert className="mt-px size-3.5 shrink-0" />
           <span>
             The token is printed at startup and stored in{" "}
-            <code className="font-mono">&lt;data-dir&gt;/token</code>. Override it
-            with <code className="font-mono">-auth-token</code> or{" "}
-            <code className="font-mono">REDISUI_AUTH_TOKEN</code>.
+            <code className="font-mono">&lt;data-dir&gt;/token</code>. Accounts
+            are managed by an admin under Diagnostics → Users.
           </span>
         </p>
-      </form>
+      </div>
     </div>
   );
 }

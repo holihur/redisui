@@ -211,7 +211,26 @@ export type ToolKey =
   | "clients"
   | "pubsub"
   | "monitor"
-  | "search";
+  | "search"
+  | "users";
+
+export type UserRole = "admin" | "operator" | "viewer";
+
+export interface PublicUser {
+  username: string;
+  role: UserRole;
+  connections: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoginResult {
+  token: string;
+  username: string;
+  role: UserRole;
+  connections: string[];
+  expiresAt: string;
+}
 
 export interface Mutation {
   db: number;
