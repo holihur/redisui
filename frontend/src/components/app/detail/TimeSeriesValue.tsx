@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { LineChart } from "@/components/app/charts/Chart";
 import type { EditorProps } from "./types";
 
 interface TSData {
@@ -55,6 +56,14 @@ export function TimeSeriesValue({ detail, busy, mutate }: EditorProps) {
             <span className="font-mono">{show(info[k])}</span>
           </div>
         ))}
+      </div>
+
+      <div className="shrink-0 border-b px-2 pt-2">
+        <LineChart
+          points={samples.map((s) => ({ x: s.ts, y: s.value }))}
+          height={180}
+          formatX={(x) => new Date(x).toLocaleTimeString()}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b p-2">

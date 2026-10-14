@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JsonHighlight } from "./JsonHighlight";
+import { BarChart } from "@/components/app/charts/Chart";
 import type { ModuleKind } from "@/lib/format";
 import type { EditorProps } from "./types";
 
@@ -58,27 +59,11 @@ export function ModuleKeyValue({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {data.items && data.items.length > 0 ? (
-        <div className="max-h-48 shrink-0 overflow-y-auto border-b">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-background text-left text-muted-foreground">
-              <tr className="border-b">
-                <th className="px-3 py-1.5 font-medium">Item</th>
-                <th className="px-3 py-1.5 text-right font-medium">Count</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((it) => (
-                <tr key={it.item} className="border-b last:border-0">
-                  <td className="max-w-0 px-3 py-1">
-                    <span className="block truncate font-mono" title={it.item}>
-                      {it.item}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1 text-right font-mono">{it.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="max-h-56 shrink-0 overflow-y-auto border-b p-3">
+          <p className="mb-2 text-xs font-medium">Top items</p>
+          <BarChart
+            bars={data.items.map((it) => ({ label: it.item, value: it.count }))}
+          />
         </div>
       ) : null}
 

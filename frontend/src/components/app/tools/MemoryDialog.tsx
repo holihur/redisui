@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BarChart } from "@/components/app/charts/Chart";
 import { formatBytes, typeColor } from "@/lib/format";
 import type { MemoryReport } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -119,6 +120,14 @@ export function MemoryDialog({
                       (sampled {report.sampled})
                     </span>
                   </p>
+                  <BarChart
+                    className="mb-4"
+                    bars={report.topKeys.map((k) => ({
+                      label: k.key,
+                      value: k.size,
+                    }))}
+                    formatValue={formatBytes}
+                  />
                   <table className="w-full text-xs">
                     <thead className="text-left text-muted-foreground">
                       <tr className="border-b">

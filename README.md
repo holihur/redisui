@@ -38,6 +38,11 @@ token-based remote access.
 - Delete keys by pattern (with type-to-confirm)
 - Export/import keys via `DUMP`/`RESTORE` as JSON
 
+**Visualization**
+- RedisTimeSeries: interactive line/area chart of samples (hover for values)
+- TopK: bar chart of item frequencies
+- Memory analysis: bar chart of the largest keys
+
 **Module support**
 - Module list (`MODULE LIST`) in the server info panel
 - RedisJSON: view and edit documents (`JSON.GET`/`JSON.SET`)
