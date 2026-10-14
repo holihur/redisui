@@ -24,6 +24,9 @@ export function TokenGate({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [state, setState] = useState<"loading" | "locked" | "ready">("loading");
   const [multiUser, setMultiUser] = useState(false);
+  const [oidc, setOidc] = useState<{ name: string; loginUrl: string } | null>(
+    null,
+  );
   const [tab, setTab] = useState<"login" | "token">("token");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,9 +48,20 @@ export function TokenGate({ children }: { children: ReactNode }) {
 
   const check = useCallback(async () => {
     setError("");
+    // Pick up a token returned by the OIDC callback fragment.
+    const hash = window.location.hash;
+    if (hash.startsWith("#oidc_token=")) {
+      setAuthToken(decodeURIComponent(hash.slice("#oidc_token=".length)));
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+    }
     try {
       const status = await api.authStatus();
       setMultiUser(status.multiUser);
+      setOidc(status.oidc?.enabled ? status.oidc : null);
       if (!status.required) {
         apply({ role: "admin" });
         return;
@@ -147,6 +161,19 @@ export function TokenGate({ children }: { children: ReactNode }) {
             </p>
           </div>
         </div>
+
+        {oidc ? (
+          <Button
+            type="button"
+            className="mb-4 w-full"
+            onClick={() => {
+              window.location.href = oidc.loginUrl;
+            }}
+          >
+            <LogIn className="size-4" />
+            {t("Sign in with {name}", { name: oidc.name })}
+          </Button>
+        ) : null}
 
         {showTabs ? (
           <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">

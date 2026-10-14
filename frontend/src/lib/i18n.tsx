@@ -50,6 +50,7 @@ const zh: Record<string, string> = {
   "Enter the access token to continue": "输入访问令牌以继续",
   "Sign in to continue": "登录以继续",
   "Sign in": "登录",
+  "Sign in with {name}": "使用 {name} 登录",
   "Access token": "访问令牌",
   "Paste the token from the server log": "粘贴服务端日志中的令牌",
   Unlock: "解锁",

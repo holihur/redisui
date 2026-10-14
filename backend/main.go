@@ -17,6 +17,7 @@ import (
 
 	"redisui/internal/account"
 	"redisui/internal/api"
+	"redisui/internal/oidc"
 	"redisui/internal/proxy"
 	"redisui/internal/secret"
 	"redisui/internal/session"
@@ -44,6 +45,15 @@ func main() {
 	noUpdate := flag.Bool("no-update", false, "disable the self-update checker")
 	proxyAddr := flag.String("proxy-addr", "", "optional RESP proxy listen address, e.g. 0.0.0.0:6380")
 	proxyTarget := flag.String("proxy-target", "", "Redis target for the proxy (host:port)")
+	oidcIssuer := flag.String("oidc-issuer", "", "OpenID Connect issuer URL")
+	oidcClientID := flag.String("oidc-client-id", "", "OpenID Connect client id")
+	oidcClientSecret := flag.String("oidc-client-secret", "", "OpenID Connect client secret")
+	oidcRedirectURL := flag.String("oidc-redirect-url", "", "OIDC redirect URL (must end with /api/auth/oidc/callback)")
+	oidcName := flag.String("oidc-name", "", "Display name for the SSO button")
+	oidcDefaultRole := flag.String("oidc-default-role", "viewer", "role for new OIDC users (viewer/operator/admin)")
+	oidcAllowedEmails := flag.String("oidc-allowed-emails", "", "comma-separated allowlist of emails")
+	oidcAllowedDomains := flag.String("oidc-allowed-domains", "", "comma-separated allowlist of email domains")
+	oidcAdminEmails := flag.String("oidc-admin-emails", "", "comma-separated emails granted admin")
 	printVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -169,6 +179,32 @@ func main() {
 		log.Printf("WARNING: both -proxy-addr and -proxy-target are required to enable the proxy")
 	}
 
+	// --- optional OIDC ------------------------------------------------------
+	var oidcConfig *api.OIDCConfig
+	if *oidcIssuer != "" && *oidcClientID != "" && *oidcRedirectURL != "" {
+		provider := oidc.New(oidc.Config{
+			Issuer:       *oidcIssuer,
+			ClientID:     *oidcClientID,
+			ClientSecret: *oidcClientSecret,
+			RedirectURL:  *oidcRedirectURL,
+			Name:         *oidcName,
+		})
+		oidcConfig = &api.OIDCConfig{
+			Provider:       provider,
+			DefaultRole:    account.Role(strings.ToLower(strings.TrimSpace(*oidcDefaultRole))),
+			AllowedEmails:  splitCSV(*oidcAllowedEmails),
+			AllowedDomains: splitCSV(*oidcAllowedDomains),
+			AdminEmails:    splitCSV(*oidcAdminEmails),
+			PostLoginPath:  "/",
+		}
+		log.Printf("OIDC enabled: issuer=%s name=%s", *oidcIssuer, provider.Name())
+		if len(oidcConfig.AllowedEmails) == 0 && len(oidcConfig.AllowedDomains) == 0 {
+			log.Printf("WARNING: no -oidc-allowed-emails/domains set; any authenticated OIDC user will be granted the %q role", oidcConfig.DefaultRole)
+		}
+	} else if *oidcIssuer != "" || *oidcClientID != "" || *oidcRedirectURL != "" {
+		log.Printf("WARNING: OIDC requires -oidc-issuer, -oidc-client-id and -oidc-redirect-url")
+	}
+
 	srv := &http.Server{
 		Addr: *addr,
 		Handler: api.New(st, mgr, api.Options{
@@ -179,6 +215,7 @@ func main() {
 			StaticFS:      staticFS,
 			Update:        updater,
 			Proxy:         respProxy,
+			OIDC:          oidcConfig,
 			CORSOrigin:    *corsOrigin,
 			TrustProxy:    *trustProxy,
 		}),
@@ -241,6 +278,21 @@ func restartSelf() error {
 		os.Exit(0)
 	}
 	return nil
+}
+
+// splitCSV parses a comma-separated list, trimming blanks.
+func splitCSV(v string) []string {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // loadOrCreateToken reuses a previously generated token so clients keep working

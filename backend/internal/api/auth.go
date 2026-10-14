@@ -167,7 +167,8 @@ func bearerToken(r *http.Request) string {
 
 func isPublicPath(path string) bool {
 	switch path {
-	case "/api/health", "/api/auth/status", "/api/auth/login":
+	case "/api/health", "/api/auth/status", "/api/auth/login",
+		"/api/auth/oidc/login", "/api/auth/oidc/callback":
 		return true
 	}
 	return false
@@ -252,10 +253,18 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 // ---------------------------------------------------------------------------
 
 func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
+	resp := map[string]any{
 		"required":  s.authRequired(),
 		"multiUser": s.multiUser(),
-	})
+	}
+	if s.oidcEnabled() {
+		resp["oidc"] = map[string]any{
+			"enabled":  true,
+			"name":     s.oidc.Provider.Name(),
+			"loginUrl": "/api/auth/oidc/login",
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) authVerify(w http.ResponseWriter, r *http.Request) {

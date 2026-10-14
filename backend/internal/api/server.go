@@ -9,6 +9,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"redisui/internal/account"
@@ -31,6 +32,9 @@ type Server struct {
 	trustProxy    bool
 	updater       *update.Updater
 	proxy         *proxy.Proxy
+	oidc          *OIDCConfig
+	oidcMu        sync.Mutex
+	oidcStates    map[string]oidcState
 }
 
 // Options configures the HTTP server.
@@ -50,6 +54,8 @@ type Options struct {
 	Update *update.Updater
 	// Proxy exposes RESP proxy metrics when non-nil.
 	Proxy *proxy.Proxy
+	// OIDC enables OpenID Connect login when non-nil.
+	OIDC *OIDCConfig
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -70,6 +76,10 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 		trustProxy:    opts.TrustProxy,
 		updater:       opts.Update,
 		proxy:         opts.Proxy,
+		oidc:          opts.OIDC,
+	}
+	if opts.OIDC != nil {
+		s.oidcStates = map[string]oidcState{}
 	}
 
 	mux := http.NewServeMux()
@@ -79,6 +89,8 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	mux.HandleFunc("POST /api/auth/login", s.authLogin)
 	mux.HandleFunc("POST /api/auth/logout", s.authLogout)
 	mux.HandleFunc("GET /api/auth/me", s.authMe)
+	mux.HandleFunc("GET /api/auth/oidc/login", s.oidcLogin)
+	mux.HandleFunc("GET /api/auth/oidc/callback", s.oidcCallback)
 
 	mux.HandleFunc("GET /api/users", s.listUsers)
 	mux.HandleFunc("POST /api/users", s.createUser)

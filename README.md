@@ -55,6 +55,7 @@ token-based remote access.
 
 **Security & remote access**
 - Multi-user accounts with roles: `admin`, `operator`, `viewer`
+- OpenID Connect (SSO) login with email/domain allowlists
 - Personal access tokens (PAT) with scopes (`read`/`write`/`admin`)
 - Per-user / per-token connection scope
 - Bearer/access-token authentication with brute-force login throttling
@@ -160,6 +161,14 @@ redis.example.com {
 | `-update-interval` | `10m` | How often to check for updates |
 | `-update-auto` | `true` | Auto-apply updates (`false` = notify only) |
 | `-no-update` | `false` | Disable the self-update checker |
+| `-proxy-addr` / `-proxy-target` | — | Enable the RESP proxy |
+| `-oidc-issuer` | — | OIDC issuer URL (enables SSO) |
+| `-oidc-client-id` / `-oidc-client-secret` | — | OIDC client credentials |
+| `-oidc-redirect-url` | — | OIDC callback URL |
+| `-oidc-name` | `SSO` | Login button label |
+| `-oidc-allowed-emails` / `-oidc-allowed-domains` | — | Access allowlists |
+| `-oidc-admin-emails` | — | Emails granted admin |
+| `-oidc-default-role` | `viewer` | Role for new OIDC users |
 | `-version` | — | Print version and exit |
 
 Environment variables:
@@ -225,6 +234,30 @@ frontend/               React 19 + Vite + Tailwind v4 + Radix
   src/lib/keytree.ts    pure, tested key-tree logic
   src/components/app/   UI (tree, detail editors, tools)
 ```
+
+## Single sign-on (OIDC)
+
+RedisUI can authenticate users through an OpenID Connect provider
+(Keycloak, Auth0, Okta, Entra ID, Google, …). Configure it with flags or the
+matching environment variables:
+
+```bash
+redisui \
+  -oidc-issuer https://sso.example.com/realms/main \
+  -oidc-client-id redisui \
+  -oidc-client-secret <secret> \
+  -oidc-redirect-url https://redisui.example.com/api/auth/oidc/callback \
+  -oidc-name "Company SSO" \
+  -oidc-allowed-domains example.com \
+  -oidc-admin-emails boss@example.com \
+  -oidc-default-role viewer
+```
+
+Register the redirect URL with your provider. The ID token is verified against
+the provider's JWKS (RS256/ES256), including issuer, audience, expiry and nonce.
+Access is restricted by `-oidc-allowed-emails` / `-oidc-allowed-domains` (empty =
+allow any authenticated user); `-oidc-admin-emails` grants admin. On success the
+browser returns to the app with a RedisUI session token.
 
 ## MCP server
 

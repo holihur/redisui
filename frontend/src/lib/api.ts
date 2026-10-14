@@ -106,7 +106,11 @@ export const api = {
   health: () => request<{ status: string }>("/health"),
 
   authStatus: () =>
-    request<{ required: boolean; multiUser: boolean }>("/auth/status"),
+    request<{
+      required: boolean;
+      multiUser: boolean;
+      oidc?: { enabled: boolean; name: string; loginUrl: string };
+    }>("/auth/status"),
   authVerify: () =>
     request<{
       ok: boolean;
