@@ -267,10 +267,35 @@ func (s *Session) GetKey(ctx context.Context, db int, key string, cursor uint64,
 		detail.Value = entries
 		detail.Length = total
 
+	case "ReJSON-RL", "json":
+		// RedisJSON: return the whole document as a JSON string.
+		raw, err := cli.Do(ctx, "JSON.GET", key).Result()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			return nil, err
+		}
+		detail.Value = stringify(raw)
+		detail.Length = 1
+
+	case "TSDB-TYPE", "timeseries":
+		// RedisTimeSeries: recent samples plus TS.INFO metadata.
+		samples, err := cli.Do(ctx, "TS.RANGE", key, "-", "+", "COUNT", strconv.FormatInt(count, 10)).Result()
+		if err != nil {
+			return nil, err
+		}
+		info, _ := cli.Do(ctx, "TS.INFO", key).Result()
+		detail.Value = map[string]any{"info": info, "samples": samples}
+		detail.Length = int64(len(toAnySlice(samples)))
+
 	default:
-		// Unknown module type (e.g. RedisJSON): return its raw string form.
+		// Unknown module type (e.g. RedisBloom, RedisGears): expose a hint and
+		// fall back to a raw string representation when one exists.
 		if raw, err := cli.Do(ctx, "GET", key).Result(); err == nil {
-			detail.Value = raw
+			detail.Value = stringify(raw)
+		} else {
+			detail.Value = map[string]any{
+				"moduleType": typ,
+				"note":       "This key belongs to a Redis module. Use the command console for module-specific commands.",
+			}
 		}
 	}
 

@@ -7,6 +7,7 @@ import {
   Plus,
   Radar,
   Radio,
+  Search,
   Sun,
   Terminal,
   Timer,
@@ -41,6 +42,7 @@ export function AppHeader() {
   const disconnect = useAppStore((s) => s.disconnect);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const setActiveTool = useAppStore((s) => s.setActiveTool);
+  const role = useAppStore((s) => s.role);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar px-2 sm:px-3">
@@ -74,6 +76,14 @@ export function AppHeader() {
           {session.mode && session.mode !== "direct" ? (
             <Badge variant="outline" className="hidden text-[10px] capitalize sm:inline-flex">
               {session.mode}
+            </Badge>
+          ) : null}
+          {role === "readonly" ? (
+            <Badge
+              variant="outline"
+              className="shrink-0 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+            >
+              read-only
             </Badge>
           ) : null}
           {session.tls ? (
@@ -155,6 +165,10 @@ export function AppHeader() {
             <DropdownMenuItem onSelect={() => setActiveTool("monitor")}>
               <Radar className="size-4" />
               Profiler (MONITOR)
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveTool("search")}>
+              <Search className="size-4" />
+              Search (RediSearch)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

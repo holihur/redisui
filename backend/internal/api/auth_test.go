@@ -13,6 +13,13 @@ func newAuthHandler(token string) http.Handler {
 	}))
 }
 
+func newRoleAuthHandler(full, readOnly string) http.Handler {
+	s := &Server{authToken: full, readOnlyToken: readOnly, limiter: newAuthLimiter()}
+	return s.withAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+}
+
 func do(h http.Handler, method, target, token string) int {
 	req := httptest.NewRequest(method, target, nil)
 	if token != "" {
@@ -68,6 +75,53 @@ func TestAuthLimiterLocksOutAfterRepeatedFailures(t *testing.T) {
 	}
 	if code := do(h, http.MethodGet, "/api/connections", "secret"); code != http.StatusTooManyRequests {
 		t.Fatalf("expected lockout after %d failures, got %d", maxAuthFailures, code)
+	}
+}
+
+func TestReadOnlyToken(t *testing.T) {
+	h := newRoleAuthHandler("fulltok", "rotok")
+
+	// Reads are allowed.
+	if code := do(h, http.MethodGet, "/api/connections", "rotok"); code != http.StatusOK {
+		t.Fatalf("read-only GET should pass, got %d", code)
+	}
+	// Opening a session is allowed (needed to browse at all).
+	if code := do(h, http.MethodPost, "/api/connections/abc/open", "rotok"); code != http.StatusOK {
+		t.Fatalf("read-only open should pass, got %d", code)
+	}
+	// Mutations are blocked.
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodPost, "/api/sessions/s/mutate"},
+		{http.MethodPost, "/api/sessions/s/command"},
+		{http.MethodPost, "/api/sessions/s/import"},
+		{http.MethodPost, "/api/sessions/s/bulk-delete"},
+		{http.MethodDelete, "/api/sessions/s/key"},
+		{http.MethodPut, "/api/connections/c"},
+	} {
+		if code := do(h, tc.method, tc.path, "rotok"); code != http.StatusForbidden {
+			t.Fatalf("read-only %s %s should be 403, got %d", tc.method, tc.path, code)
+		}
+	}
+	// The full token may mutate.
+	if code := do(h, http.MethodPost, "/api/sessions/s/mutate", "fulltok"); code != http.StatusOK {
+		t.Fatalf("full token should mutate, got %d", code)
+	}
+	// Unknown tokens are rejected.
+	if code := do(h, http.MethodGet, "/api/connections", "nope"); code != http.StatusUnauthorized {
+		t.Fatalf("unknown token should be 401, got %d", code)
+	}
+}
+
+func TestAuthenticateRoles(t *testing.T) {
+	s := &Server{authToken: "full", readOnlyToken: "ro"}
+	if role, ok := s.authenticate("full"); !ok || role != roleFull {
+		t.Fatalf("full token -> %q %v", role, ok)
+	}
+	if role, ok := s.authenticate("ro"); !ok || role != roleReadOnly {
+		t.Fatalf("read-only token -> %q %v", role, ok)
+	}
+	if _, ok := s.authenticate("x"); ok {
+		t.Fatal("unknown token should not authenticate")
 	}
 }
 

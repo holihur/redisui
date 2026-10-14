@@ -10,7 +10,9 @@ import type {
   KeyDetail,
   KeyInfo,
   MemoryReport,
+  ModuleInfo,
   Mutation,
+  SearchResult,
   ServerInfo,
   SessionInfo,
   SlowlogEntry,
@@ -96,7 +98,10 @@ export const api = {
   health: () => request<{ status: string }>("/health"),
 
   authStatus: () => request<{ required: boolean }>("/auth/status"),
-  authVerify: () => request<{ ok: boolean }>("/auth/verify", { method: "POST" }),
+  authVerify: () =>
+    request<{ ok: boolean; role: "full" | "readonly" }>("/auth/verify", {
+      method: "POST",
+    }),
 
   listConnections: () => request<Connection[]>("/connections"),
   getConnection: (id: string) => request<Connection>(`/connections/${id}`),
@@ -238,6 +243,28 @@ export const api = {
   /** EventSource URL for the MONITOR profiler (token via query string). */
   monitorUrl: (sid: string, db: number) =>
     `${BASE}/sessions/${sid}/monitor${qs({ db, token: getAuthToken() })}`,
+
+  modules: (sid: string, db: number) =>
+    request<{ modules: ModuleInfo[] }>(
+      `/sessions/${sid}/modules${qs({ db })}`,
+    ),
+
+  searchIndexes: (sid: string, db: number) =>
+    request<{ indexes: string[] }>(
+      `/sessions/${sid}/search/indexes${qs({ db })}`,
+    ),
+
+  search: (
+    sid: string,
+    db: number,
+    index: string,
+    q: string,
+    offset = 0,
+    limit = 25,
+  ) =>
+    request<SearchResult>(
+      `/sessions/${sid}/search${qs({ db, index, q, offset, limit })}`,
+    ),
 };
 
 export { ApiError };

@@ -40,7 +40,7 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
-import { REDIS_TYPES } from "@/lib/format";
+import { REDIS_TYPES, typeLabel } from "@/lib/format";
 import type { RedisTypeFilter } from "@/lib/format";
 import { buildKeyTree, collectExpandablePaths } from "@/lib/keytree";
 import { useAppStore } from "@/store/useAppStore";
@@ -139,7 +139,7 @@ export function KeyBrowser({ className }: { className?: string }) {
           <SelectContent>
             {REDIS_TYPES.map((t) => (
               <SelectItem key={t} value={t}>
-                {t}
+                {typeLabel(t)}
               </SelectItem>
             ))}
           </SelectContent>

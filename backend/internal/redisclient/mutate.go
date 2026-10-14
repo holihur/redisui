@@ -48,6 +48,13 @@ func (s *Session) Apply(ctx context.Context, m Mutation) (any, error) {
 		}
 		return nil, cli.Set(ctx, m.Key, m.Value, exp).Err()
 
+	case "json.set":
+		val := strings.TrimSpace(m.Value)
+		if val == "" {
+			return nil, fmt.Errorf("json value is required")
+		}
+		return nil, cli.Do(ctx, "JSON.SET", m.Key, "$", val).Err()
+
 	case "hash.set":
 		return nil, cli.HSet(ctx, m.Key, m.Field, m.Value).Err()
 	case "hash.del":

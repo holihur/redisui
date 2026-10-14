@@ -12,6 +12,9 @@ import (
 const (
 	maxAuthFailures = 8
 	authLockout     = time.Minute
+
+	roleFull     = "full"
+	roleReadOnly = "readonly"
 )
 
 type failureRecord struct {
@@ -97,11 +100,40 @@ func bearerToken(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
+// authenticate matches the presented token against the full or read-only
+// token and returns the granted role.
+func (s *Server) authenticate(got string) (string, bool) {
+	if s.authToken != "" && subtle.ConstantTimeCompare([]byte(got), []byte(s.authToken)) == 1 {
+		return roleFull, true
+	}
+	if s.readOnlyToken != "" && subtle.ConstantTimeCompare([]byte(got), []byte(s.readOnlyToken)) == 1 {
+		return roleReadOnly, true
+	}
+	return "", false
+}
+
+// readOnlyAllowed reports whether a read-only client may perform the request.
+// Reads are always allowed; a few non-mutating POSTs are needed for the UI.
+func readOnlyAllowed(method, path string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	case http.MethodPost:
+		switch {
+		case path == "/api/auth/verify" || path == "/api/connections/test":
+			return true
+		case strings.HasSuffix(path, "/open"):
+			return true
+		}
+	}
+	return false
+}
+
 // withAuth gates every /api/* route behind the access token. The health and
 // auth-status endpoints stay open so probes and the login screen work.
 func (s *Server) withAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.authToken == "" ||
+		if (s.authToken == "" && s.readOnlyToken == "") ||
 			!strings.HasPrefix(r.URL.Path, "/api/") ||
 			r.URL.Path == "/api/health" ||
 			r.URL.Path == "/api/auth/status" {
@@ -117,23 +149,34 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 		}
 
 		got := bearerToken(r)
-		if subtle.ConstantTimeCompare([]byte(got), []byte(s.authToken)) != 1 {
+		role, ok := s.authenticate(got)
+		if !ok {
 			s.limiter.fail(ip)
 			writeErr(w, http.StatusUnauthorized, errString("unauthorized: a valid access token is required"))
 			return
 		}
 		s.limiter.reset(ip)
+
+		if role == roleReadOnly && !readOnlyAllowed(r.Method, r.URL.Path) {
+			writeErr(w, http.StatusForbidden, errString("read-only token cannot perform this action"))
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
 
 func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"required": s.authToken != "",
+		"required": s.authToken != "" || s.readOnlyToken != "",
 	})
 }
 
 func (s *Server) authVerify(w http.ResponseWriter, r *http.Request) {
-	// Reaching this handler means withAuth accepted the token.
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	// Reaching this handler means withAuth accepted the token (or auth is off).
+	// Re-derive the role so the UI can adapt.
+	role, ok := s.authenticate(bearerToken(r))
+	if !ok {
+		role = roleFull
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "role": role})
 }

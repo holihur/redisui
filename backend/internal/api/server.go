@@ -17,17 +17,20 @@ import (
 
 // Server holds the API dependencies.
 type Server struct {
-	store      *store.Store
-	sessions   *session.Manager
-	authToken  string
-	limiter    *authLimiter
-	trustProxy bool
+	store         *store.Store
+	sessions      *session.Manager
+	authToken     string
+	readOnlyToken string
+	limiter       *authLimiter
+	trustProxy    bool
 }
 
 // Options configures the HTTP server.
 type Options struct {
 	// AuthToken enables bearer-token authentication when non-empty.
 	AuthToken string
+	// ReadOnlyToken grants read-only access when non-empty.
+	ReadOnlyToken string
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -37,11 +40,12 @@ type Options struct {
 // New builds the HTTP handler (API + SPA static files).
 func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) http.Handler {
 	s := &Server{
-		store:      st,
-		sessions:   mgr,
-		authToken:  opts.AuthToken,
-		limiter:    newAuthLimiter(),
-		trustProxy: opts.TrustProxy,
+		store:         st,
+		sessions:      mgr,
+		authToken:     opts.AuthToken,
+		readOnlyToken: opts.ReadOnlyToken,
+		limiter:       newAuthLimiter(),
+		trustProxy:    opts.TrustProxy,
 	}
 
 	mux := http.NewServeMux()
@@ -76,6 +80,9 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("POST /api/sessions/{sid}/import", s.importKeys)
 	mux.HandleFunc("GET /api/sessions/{sid}/pubsub", s.pubsub)
 	mux.HandleFunc("GET /api/sessions/{sid}/monitor", s.monitor)
+	mux.HandleFunc("GET /api/sessions/{sid}/modules", s.modules)
+	mux.HandleFunc("GET /api/sessions/{sid}/search/indexes", s.searchIndexes)
+	mux.HandleFunc("GET /api/sessions/{sid}/search", s.search)
 
 	if staticDir != "" {
 		if _, err := os.Stat(staticDir); err == nil {

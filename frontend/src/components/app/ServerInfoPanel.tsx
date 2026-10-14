@@ -11,7 +11,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
-import type { ServerInfo } from "@/lib/types";
+import type { ModuleInfo, ServerInfo } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
 function KeyValues({ data }: { data: Record<string, string> }) {
@@ -46,6 +46,7 @@ export function ServerInfoPanel() {
   const activeDb = useAppStore((s) => s.activeDb);
 
   const [info, setInfo] = useState<ServerInfo | null>(null);
+  const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -62,6 +63,14 @@ export function ServerInfoPanel() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+    api
+      .modules(session.id, activeDb)
+      .then((res) => {
+        if (!cancelled) setModules(res.modules ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setModules([]);
       });
     return () => {
       cancelled = true;
@@ -92,6 +101,7 @@ export function ServerInfoPanel() {
               <TabsTrigger value="keyspace">Keyspace</TabsTrigger>
               <TabsTrigger value="stats">Stats</TabsTrigger>
               <TabsTrigger value="replication">Replication</TabsTrigger>
+              <TabsTrigger value="modules">Modules</TabsTrigger>
             </TabsList>
             <ScrollArea className="h-[55svh] pr-3">
               <TabsContent value="server" className="mt-3">
@@ -111,6 +121,31 @@ export function ServerInfoPanel() {
               </TabsContent>
               <TabsContent value="replication" className="mt-3">
                 <KeyValues data={info?.replication ?? {}} />
+              </TabsContent>
+              <TabsContent value="modules" className="mt-3">
+                {modules.length === 0 ? (
+                  <p className="py-8 text-center text-xs text-muted-foreground">
+                    No modules loaded
+                  </p>
+                ) : (
+                  <table className="w-full text-xs">
+                    <tbody>
+                      {modules.map((m) => (
+                        <tr key={m.name} className="border-b last:border-0">
+                          <td className="py-1.5 pr-4 align-top font-mono">
+                            {m.name}
+                          </td>
+                          <td className="py-1.5 pr-4 align-top font-mono text-muted-foreground">
+                            ver {m.ver}
+                          </td>
+                          <td className="py-1.5 align-top font-mono break-all text-muted-foreground">
+                            {m.path}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </TabsContent>
             </ScrollArea>
           </Tabs>

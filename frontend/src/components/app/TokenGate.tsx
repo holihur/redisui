@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api";
+import { useAppStore } from "@/store/useAppStore";
 
 /**
  * TokenGate blocks the app until the server confirms access. When the server
@@ -15,18 +16,21 @@ export function TokenGate({ children }: { children: ReactNode }) {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const setRole = useAppStore((s) => s.setRole);
 
   const check = useCallback(async () => {
     setError("");
     try {
       const { required } = await api.authStatus();
       if (!required) {
+        setRole("full");
         setState("ready");
         return;
       }
       if (getAuthToken()) {
         try {
-          await api.authVerify();
+          const res = await api.authVerify();
+          setRole(res.role ?? "full");
           setState("ready");
           return;
         } catch {
@@ -38,7 +42,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       setError(e instanceof Error ? e.message : "Cannot reach the server");
       setState("locked");
     }
-  }, []);
+  }, [setRole]);
 
   useEffect(() => {
     void check();
@@ -71,7 +75,8 @@ export function TokenGate({ children }: { children: ReactNode }) {
     setError("");
     setAuthToken(input.trim());
     try {
-      await api.authVerify();
+      const res = await api.authVerify();
+      setRole(res.role ?? "full");
       setState("ready");
     } catch (err) {
       clearAuthToken();

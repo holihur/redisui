@@ -25,6 +25,7 @@ func main() {
 	staticDir := flag.String("static", "./web", "directory containing the built frontend")
 	authToken := flag.String("auth-token", "", "access token for remote clients (default: REDISUI_AUTH_TOKEN env, then a generated token in <data>/token)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (only safe on a trusted, non-public network)")
+	readOnlyToken := flag.String("readonly-token", "", "read-only access token: GET requests and open-session only")
 	tlsCert := flag.String("tls-cert", "", "TLS certificate file; enables HTTPS together with -tls-key")
 	tlsKey := flag.String("tls-key", "", "TLS private key file")
 	corsOrigin := flag.String("cors-origin", "", "allowed CORS origin; empty keeps the API same-origin only")
@@ -66,6 +67,17 @@ func main() {
 		log.Printf("(also stored at %s; set -auth-token or REDISUI_AUTH_TOKEN to override)", filepath.Join(*dataDir, "token"))
 	}
 
+	roToken := ""
+	if requireAuth {
+		roToken = strings.TrimSpace(*readOnlyToken)
+		if roToken == "" {
+			roToken = strings.TrimSpace(os.Getenv("REDISUI_READONLY_TOKEN"))
+		}
+		if roToken != "" {
+			log.Printf("read-only token enabled (GET requests only)")
+		}
+	}
+
 	if (*tlsCert == "") != (*tlsKey == "") {
 		log.Fatalf("must provide both -tls-cert and -tls-key")
 	}
@@ -88,7 +100,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           api.New(st, mgr, *staticDir, api.Options{AuthToken: token, CORSOrigin: *corsOrigin, TrustProxy: *trustProxy}),
+		Handler:           api.New(st, mgr, *staticDir, api.Options{AuthToken: token, ReadOnlyToken: roToken, CORSOrigin: *corsOrigin, TrustProxy: *trustProxy}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

@@ -32,8 +32,16 @@ token-based remote access.
 - Delete keys by pattern (with type-to-confirm)
 - Export/import keys via `DUMP`/`RESTORE` as JSON
 
+**Module support**
+- Module list (`MODULE LIST`) in the server info panel
+- RedisJSON: view and edit documents (`JSON.GET`/`JSON.SET`)
+- RedisTimeSeries: recent samples and `TS.INFO`
+- RediSearch: list indexes (`FT._LIST`) and run queries (`FT.SEARCH`)
+- Other module types degrade gracefully with a hint to the console
+
 **Security & remote access**
 - Bearer-token authentication with brute-force login throttling
+- Optional read-only token for safe, view-only access
 - Credentials (Redis password, SSH password/key/passphrase) encrypted at rest
   with AES-256-GCM
 - Optional native TLS (`-tls-cert`/`-tls-key`), reverse-proxy aware
@@ -87,6 +95,7 @@ redis.example.com {
 | `-data` | `./data` | Directory for profiles, master key and token |
 | `-static` | `./web` | Directory of the built frontend |
 | `-auth-token` | _(generated)_ | Access token for remote clients |
+| `-readonly-token` | — | Read-only access token (GET/open only) |
 | `-no-auth` | `false` | Disable authentication |
 | `-tls-cert` / `-tls-key` | — | Enable HTTPS |
 | `-cors-origin` | _(same-origin)_ | Optional CORS origin |
@@ -97,6 +106,7 @@ Environment variables:
 | Variable | Description |
 | --- | --- |
 | `REDISUI_AUTH_TOKEN` | Access token (overrides the generated file) |
+| `REDISUI_READONLY_TOKEN` | Read-only access token |
 | `REDISUI_MASTER_KEY` | Encryption key: 64 hex chars, or any passphrase (SHA-256 derived) |
 | `REDISUI_DISABLE_ENCRYPTION` | Set to `1` to store secrets in plaintext (not recommended) |
 
@@ -155,7 +165,8 @@ frontend/               React 19 + Vite + Tailwind v4 + Radix
   full cluster-wide cursor, and `SCAN`-based pagination is per-node in the raw
   protocol.
 - No multi-user accounts/RBAC; access is a single shared token.
-- Redis module types (JSON, search, etc.) are shown as raw values.
+- Redis module types are supported for JSON (edit), TimeSeries (view) and
+  RediSearch (query); other module types are shown read-only with a hint.
 
 ## License
 

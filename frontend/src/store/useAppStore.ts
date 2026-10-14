@@ -38,6 +38,7 @@ interface AppState {
   serverInfoOpen: boolean;
   sidebarOpen: boolean;
   activeTool: ToolKey | null;
+  role: "full" | "readonly";
 
   connectionDialogOpen: boolean;
   editingConnection: Connection | null;
@@ -61,6 +62,7 @@ interface AppState {
   setServerInfoOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setActiveTool: (tool: ToolKey | null) => void;
+  setRole: (role: "full" | "readonly") => void;
 }
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -94,6 +96,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   serverInfoOpen: false,
   sidebarOpen: false,
   activeTool: null,
+  role: "full",
 
   connectionDialogOpen: false,
   editingConnection: null,
@@ -311,5 +314,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTool(tool: ToolKey | null) {
     set({ activeTool: tool });
+  },
+
+  setRole(role: "full" | "readonly") {
+    set({ role });
   },
 }));

@@ -244,6 +244,57 @@ func jsonStringSlice(v []string) string {
 }
 
 // ---------------------------------------------------------------------------
+// Modules & RediSearch
+// ---------------------------------------------------------------------------
+
+func (s *Server) modules(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 15*time.Second)
+	defer cancel()
+	mods, err := sess.Modules(ctx, queryInt(r, "db", 0))
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"modules": mods})
+}
+
+func (s *Server) searchIndexes(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 15*time.Second)
+	defer cancel()
+	indexes, err := sess.Indexes(ctx, queryInt(r, "db", 0))
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"indexes": indexes})
+}
+
+func (s *Server) search(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	res, err := sess.Search(ctx, queryInt(r, "db", 0), q.Get("index"), q.Get("q"),
+		int64(queryInt(r, "offset", 0)), int64(queryInt(r, "limit", 25)))
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// ---------------------------------------------------------------------------
 // MONITOR (Server-Sent Events) profiler
 // ---------------------------------------------------------------------------
 

@@ -39,9 +39,23 @@ export const REDIS_TYPES = [
   "set",
   "zset",
   "stream",
+  "ReJSON-RL",
+  "TSDB-TYPE",
 ] as const;
 
 export type RedisTypeFilter = (typeof REDIS_TYPES)[number];
+
+const TYPE_LABELS: Record<string, string> = {
+  "ReJSON-RL": "json",
+  json: "json",
+  "TSDB-TYPE": "timeseries",
+  timeseries: "timeseries",
+};
+
+/** Human-friendly label for a Redis (or module) type name. */
+export function typeLabel(type: string): string {
+  return TYPE_LABELS[type] ?? type;
+}
 
 const TYPE_COLORS: Record<string, string> = {
   string: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
@@ -50,6 +64,10 @@ const TYPE_COLORS: Record<string, string> = {
   set: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20",
   zset: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20",
   stream: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  "ReJSON-RL": "bg-lime-500/15 text-lime-600 dark:text-lime-400 border-lime-500/20",
+  json: "bg-lime-500/15 text-lime-600 dark:text-lime-400 border-lime-500/20",
+  "TSDB-TYPE": "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+  timeseries: "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
   none: "bg-muted text-muted-foreground border-border",
 };
 

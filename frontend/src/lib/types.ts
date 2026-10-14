@@ -171,7 +171,26 @@ export interface PubSubEvent {
   payload: string;
 }
 
-export type ToolKey = "slowlog" | "memory" | "clients" | "pubsub" | "monitor";
+export interface ModuleInfo {
+  name: string;
+  ver: number;
+  path: string;
+}
+
+export type SearchHit = Record<string, string>;
+
+export interface SearchResult {
+  total: number;
+  hits: SearchHit[];
+}
+
+export type ToolKey =
+  | "slowlog"
+  | "memory"
+  | "clients"
+  | "pubsub"
+  | "monitor"
+  | "search";
 
 export interface Mutation {
   db: number;

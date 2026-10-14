@@ -3,7 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronRight, Folder, FolderOpen, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { formatBytes, formatTTL, typeColor } from "@/lib/format";
+import { formatBytes, formatTTL, typeColor, typeLabel } from "@/lib/format";
 import {
   defaultOpen,
   flattenTree,
@@ -175,7 +175,7 @@ function KeyTreeRow({
                 typeColor(node.key!.type),
               )}
             >
-              {node.key!.type}
+              {typeLabel(node.key!.type)}
             </Badge>
             <span className="hidden w-12 text-right font-mono text-[10px] text-muted-foreground sm:inline">
               {formatTTL(node.key!.ttl)}

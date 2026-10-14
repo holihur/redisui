@@ -32,10 +32,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatBytes, formatTTL, typeColor } from "@/lib/format";
+import { formatBytes, formatTTL, typeColor, typeLabel } from "@/lib/format";
 import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 import { StringValue } from "./detail/StringValue";
+import { JsonValue } from "./detail/JsonValue";
 import { HashValue } from "./detail/HashValue";
 import { ListValue } from "./detail/ListValue";
 import { SetValue } from "./detail/SetValue";
@@ -137,6 +138,9 @@ export function KeyDetail() {
     switch (detail.type) {
       case "string":
         return <StringValue {...props} />;
+      case "ReJSON-RL":
+      case "json":
+        return <JsonValue {...props} />;
       case "hash":
         return <HashValue {...props} />;
       case "list":
@@ -180,7 +184,7 @@ export function KeyDetail() {
               variant="outline"
               className={cn("shrink-0 text-[10px]", typeColor(detail?.type ?? "none"))}
             >
-              {detail?.type ?? "…"}
+              {detail ? typeLabel(detail.type) : "…"}
             </Badge>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
