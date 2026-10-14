@@ -8,7 +8,6 @@ import { MonitorDialog } from "./MonitorDialog";
 import { SearchDialog } from "./SearchDialog";
 import { UsersDialog } from "./UsersDialog";
 import { AboutDialog } from "./AboutDialog";
-import { ScriptDialog } from "./ScriptDialog";
 import { ProxyDialog } from "./ProxyDialog";
 import { TokensDialog } from "./TokensDialog";
 
@@ -29,7 +28,6 @@ export function ToolDialogs() {
       <PubSubDialog open={open("pubsub")} onOpenChange={onChange("pubsub")} />
       <MonitorDialog open={open("monitor")} onOpenChange={onChange("monitor")} />
       <SearchDialog open={open("search")} onOpenChange={onChange("search")} />
-      <ScriptDialog open={open("script")} onOpenChange={onChange("script")} />
       <ProxyDialog open={open("proxy")} onOpenChange={onChange("proxy")} />
       <TokensDialog open={open("tokens")} onOpenChange={onChange("tokens")} />
       <UsersDialog open={open("users")} onOpenChange={onChange("users")} />

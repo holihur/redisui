@@ -61,6 +61,7 @@ export function AppHeader() {
   const username = useAppStore((s) => s.username);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const setScriptPanelOpen = useAppStore((s) => s.setScriptPanelOpen);
   const updateStatus = useAppStore((s) => s.updateStatus);
 
   const collapseLabel = sidebarCollapsed
@@ -218,7 +219,7 @@ export function AppHeader() {
               <Search className="size-4" />
               {t("Search (RediSearch)")}
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setActiveTool("script")}>
+            <DropdownMenuItem onSelect={() => setScriptPanelOpen(true)}>
               <Code2 className="size-4" />
               {t("Lua script")}
             </DropdownMenuItem>

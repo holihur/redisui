@@ -213,7 +213,6 @@ export type ToolKey =
   | "monitor"
   | "search"
   | "users"
-  | "script"
   | "proxy"
   | "tokens"
   | "about";

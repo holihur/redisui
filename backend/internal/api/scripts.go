@@ -9,6 +9,7 @@ import (
 type evalRequest struct {
 	DB     int      `json:"db"`
 	Script string   `json:"script"`
+	SHA    string   `json:"sha"`
 	Keys   []string `json:"keys"`
 	Args   []string `json:"args"`
 }
@@ -23,13 +24,26 @@ func (s *Server) evalScript(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
-	if strings.TrimSpace(req.Script) == "" {
-		writeErr(w, http.StatusBadRequest, errString("script is required"))
+	if strings.TrimSpace(req.Script) == "" && strings.TrimSpace(req.SHA) == "" {
+		writeErr(w, http.StatusBadRequest, errString("script or sha is required"))
 		return
 	}
 	ctx, cancel := contextWithTimeout(r, 30*time.Second)
 	defer cancel()
-	res, err := sess.Eval(ctx, req.DB, req.Script, req.Keys, req.Args)
+
+	var (
+		res any
+		err error
+	)
+	// Prefer EVALSHA when a cached SHA is supplied; fall back to EVAL on NOSCRIPT.
+	if strings.TrimSpace(req.SHA) != "" {
+		res, err = sess.EvalSHA(ctx, req.DB, strings.TrimSpace(req.SHA), req.Keys, req.Args)
+		if err != nil && req.Script != "" && strings.Contains(strings.ToUpper(err.Error()), "NOSCRIPT") {
+			res, err = sess.Eval(ctx, req.DB, req.Script, req.Keys, req.Args)
+		}
+	} else {
+		res, err = sess.Eval(ctx, req.DB, req.Script, req.Keys, req.Args)
+	}
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return

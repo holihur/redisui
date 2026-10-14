@@ -42,6 +42,7 @@ interface AppState {
   username: string;
   allowedConnections: string[];
   updateStatus: UpdateStatus | null;
+  scriptPanelOpen: boolean;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   detailWidth: number;
@@ -69,6 +70,7 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   setActiveTool: (tool: ToolKey | null) => void;
   setUpdateStatus: (s: UpdateStatus | null) => void;
+  setScriptPanelOpen: (open: boolean) => void;
   setPrincipal: (p: {
     username: string;
     role: UserRole;
@@ -140,6 +142,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   username: "",
   allowedConnections: [],
   updateStatus: null,
+  scriptPanelOpen: false,
   sidebarCollapsed: lsGet("redisui.sidebarCollapsed") === "1",
   sidebarWidth: loadNum("redisui.sidebarWidth", 288, SIDEBAR_MIN, SIDEBAR_MAX),
   detailWidth: loadNum("redisui.detailWidth", 512, DETAIL_MIN, DETAIL_MAX),
@@ -293,7 +296,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const { session, activeDb } = get();
     if (!session) return;
-    set({ selectedKey: key, detailLoading: true, keyDetail: null });
+    set({ selectedKey: key, detailLoading: true, keyDetail: null, scriptPanelOpen: false });
     try {
       const detail = await api.getKey(session.id, { db: activeDb, key, count: 500 });
       set({ keyDetail: detail, detailLoading: false });
@@ -364,6 +367,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setUpdateStatus(s: UpdateStatus | null) {
     set({ updateStatus: s });
+  },
+
+  setScriptPanelOpen(open: boolean) {
+    set({ scriptPanelOpen: open });
   },
 
   setPrincipal(p: { username: string; role: UserRole; connections: string[] }) {

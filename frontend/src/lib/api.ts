@@ -271,7 +271,13 @@ export const api = {
 
   evalScript: (
     sid: string,
-    input: { db: number; script: string; keys: string[]; args: string[] },
+    input: {
+      db: number;
+      script: string;
+      sha?: string;
+      keys: string[];
+      args: string[];
+    },
   ) =>
     request<{ ok: boolean; result: unknown }>(`/sessions/${sid}/eval`, {
       method: "POST",
