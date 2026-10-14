@@ -7,10 +7,12 @@ export function formatBytes(bytes: number | undefined | null): string {
   return `${value >= 10 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`;
 }
 
+import { translate } from "./i18n";
+
 export function formatTTL(ttl: number | undefined | null): string {
   if (ttl === undefined || ttl === null) return "—";
-  if (ttl === -1) return "no expire";
-  if (ttl === -2) return "missing";
+  if (ttl === -1) return translate("no expire");
+  if (ttl === -2) return translate("missing");
   return formatDuration(ttl);
 }
 

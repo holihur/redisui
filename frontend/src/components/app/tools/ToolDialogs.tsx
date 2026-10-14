@@ -8,6 +8,7 @@ import { MonitorDialog } from "./MonitorDialog";
 import { SearchDialog } from "./SearchDialog";
 import { UsersDialog } from "./UsersDialog";
 import { AboutDialog } from "./AboutDialog";
+import { ScriptDialog } from "./ScriptDialog";
 
 /** Renders whichever diagnostic tool panel is currently active. */
 export function ToolDialogs() {
@@ -26,6 +27,7 @@ export function ToolDialogs() {
       <PubSubDialog open={open("pubsub")} onOpenChange={onChange("pubsub")} />
       <MonitorDialog open={open("monitor")} onOpenChange={onChange("monitor")} />
       <SearchDialog open={open("search")} onOpenChange={onChange("search")} />
+      <ScriptDialog open={open("script")} onOpenChange={onChange("script")} />
       <UsersDialog open={open("users")} onOpenChange={onChange("users")} />
       <AboutDialog open={open("about")} onOpenChange={onChange("about")} />
     </>

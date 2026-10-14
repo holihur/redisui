@@ -1,5 +1,6 @@
 import {
   Activity,
+  Code2,
   Database,
   Download,
   Info,
@@ -214,6 +215,10 @@ export function AppHeader() {
             <DropdownMenuItem onSelect={() => setActiveTool("search")}>
               <Search className="size-4" />
               {t("Search (RediSearch)")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveTool("script")}>
+              <Code2 className="size-4" />
+              {t("Lua script")}
             </DropdownMenuItem>
             {role === "admin" ? (
               <>

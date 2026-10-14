@@ -213,6 +213,7 @@ export type ToolKey =
   | "monitor"
   | "search"
   | "users"
+  | "script"
   | "about";
 
 export type UserRole = "admin" | "operator" | "viewer";

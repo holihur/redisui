@@ -78,6 +78,8 @@ const zh: Record<string, string> = {
   Replication: "主从复制",
   Modules: "模块",
   "No modules loaded": "未加载模块",
+  "no expire": "不过期",
+  missing: "已过期",
   Diagnostics: "诊断工具",
   "Toggle theme": "切换主题",
   Appearance: "外观",
@@ -94,6 +96,17 @@ const zh: Record<string, string> = {
   "Pub/Sub monitor": "发布/订阅监控",
   "Profiler (MONITOR)": "性能分析 (MONITOR)",
   "Search (RediSearch)": "搜索 (RediSearch)",
+  "Lua script": "Lua 脚本",
+  "Run a Lua script with EVAL; KEYS and ARGV come from the fields below.":
+    "用 EVAL 运行 Lua 脚本；KEYS 与 ARGV 来自下方输入框。",
+  "Keys (one per line)": "Keys（每行一个）",
+  "Arguments (one per line)": "Arguments（每行一个）",
+  "Run (EVAL)": "运行 (EVAL)",
+  "Load (SCRIPT LOAD)": "加载 (SCRIPT LOAD)",
+  "Script is required": "脚本为必填项",
+  "Loaded SHA: {sha}": "已加载 SHA：{sha}",
+  Result: "结果",
+  "No output yet.": "暂无输出。",
   Users: "用户",
   "About & updates": "关于与更新",
 
@@ -245,7 +258,6 @@ const zh: Record<string, string> = {
   "Member label": "成员",
   "Push direction": "写入方向",
   "TTL (seconds, optional)": "TTL（秒，可选）",
-  "no expire": "不过期",
   "Right (RPUSH)": "右端 (RPUSH)",
   "Left (LPUSH)": "左端 (LPUSH)",
   "Key name is required": "Key 名称为必填项",
@@ -423,6 +435,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+    setModuleLang(lang);
     try {
       window.localStorage.setItem(STORAGE_KEY, lang);
     } catch {
@@ -451,4 +464,26 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n() {
   return useContext(I18nContext);
+}
+
+// Module-level language for non-React helpers (e.g. formatTTL).
+let moduleLang: Lang = "en";
+
+export function setModuleLang(lang: Lang) {
+  moduleLang = lang;
+}
+
+/** Translate outside React components. */
+export function translate(
+  key: string,
+  vars?: Record<string, string | number>,
+): string {
+  const dict = moduleLang === "zh" ? zh : en;
+  let out = dict[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      out = out.split(`{${k}}`).join(String(v));
+    }
+  }
+  return out;
 }

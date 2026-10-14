@@ -249,6 +249,21 @@ export const api = {
       body: JSON.stringify({ db, command, args }),
     }),
 
+  evalScript: (
+    sid: string,
+    input: { db: number; script: string; keys: string[]; args: string[] },
+  ) =>
+    request<{ ok: boolean; result: unknown }>(`/sessions/${sid}/eval`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  scriptLoad: (sid: string, db: number, script: string) =>
+    request<{ ok: boolean; sha: string }>(`/sessions/${sid}/script/load`, {
+      method: "POST",
+      body: JSON.stringify({ db, script }),
+    }),
+
   slowlog: (sid: string, db: number, count = 100) =>
     request<{ entries: SlowlogEntry[] }>(
       `/sessions/${sid}/slowlog${qs({ db, count })}`,

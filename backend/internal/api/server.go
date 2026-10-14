@@ -98,6 +98,8 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	mux.HandleFunc("DELETE /api/sessions/{sid}/key", s.deleteKey)
 	mux.HandleFunc("POST /api/sessions/{sid}/mutate", s.mutateKey)
 	mux.HandleFunc("POST /api/sessions/{sid}/command", s.command)
+	mux.HandleFunc("POST /api/sessions/{sid}/eval", s.evalScript)
+	mux.HandleFunc("POST /api/sessions/{sid}/script/load", s.scriptLoad)
 
 	mux.HandleFunc("GET /api/sessions/{sid}/slowlog", s.slowlog)
 	mux.HandleFunc("GET /api/sessions/{sid}/memory", s.memoryReport)

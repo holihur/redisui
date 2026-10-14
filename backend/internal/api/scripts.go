@@ -1,0 +1,62 @@
+package api
+
+import (
+	"net/http"
+	"strings"
+	"time"
+)
+
+type evalRequest struct {
+	DB     int      `json:"db"`
+	Script string   `json:"script"`
+	Keys   []string `json:"keys"`
+	Args   []string `json:"args"`
+}
+
+func (s *Server) evalScript(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	var req evalRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(req.Script) == "" {
+		writeErr(w, http.StatusBadRequest, errString("script is required"))
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	res, err := sess.Eval(ctx, req.DB, req.Script, req.Keys, req.Args)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "result": res})
+}
+
+func (s *Server) scriptLoad(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	var req evalRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if strings.TrimSpace(req.Script) == "" {
+		writeErr(w, http.StatusBadRequest, errString("script is required"))
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	sha, err := sess.ScriptLoad(ctx, req.DB, req.Script)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "sha": sha})
+}
