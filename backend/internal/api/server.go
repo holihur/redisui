@@ -82,6 +82,10 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("GET /api/sessions/{sid}/monitor", s.monitor)
 	mux.HandleFunc("GET /api/sessions/{sid}/modules", s.modules)
 	mux.HandleFunc("GET /api/sessions/{sid}/search/indexes", s.searchIndexes)
+	mux.HandleFunc("GET /api/sessions/{sid}/search/info", s.searchInfo)
+	mux.HandleFunc("POST /api/sessions/{sid}/search/index", s.createIndex)
+	mux.HandleFunc("POST /api/sessions/{sid}/search/index/alter", s.alterIndex)
+	mux.HandleFunc("DELETE /api/sessions/{sid}/search/index", s.dropIndex)
 	mux.HandleFunc("GET /api/sessions/{sid}/search", s.search)
 
 	if staticDir != "" {

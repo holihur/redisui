@@ -9,9 +9,11 @@ import type {
   ImportResult,
   KeyDetail,
   KeyInfo,
+  IndexInfo,
   MemoryReport,
   ModuleInfo,
   Mutation,
+  SchemaField,
   SearchResult,
   ServerInfo,
   SessionInfo,
@@ -264,6 +266,45 @@ export const api = {
   ) =>
     request<SearchResult>(
       `/sessions/${sid}/search${qs({ db, index, q, offset, limit })}`,
+    ),
+
+  searchInfo: (sid: string, db: number, index: string) =>
+    request<IndexInfo>(`/sessions/${sid}/search/info${qs({ db, index })}`),
+
+  createIndex: (
+    sid: string,
+    spec: {
+      db: number;
+      index: string;
+      on: string;
+      prefixes: string[];
+      fields: SchemaField[];
+    },
+  ) =>
+    request<{ ok: boolean }>(`/sessions/${sid}/search/index`, {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
+
+  alterIndex: (
+    sid: string,
+    db: number,
+    index: string,
+    fields: SchemaField[],
+  ) =>
+    request<{ ok: boolean }>(`/sessions/${sid}/search/index/alter`, {
+      method: "POST",
+      body: JSON.stringify({ db, index, fields }),
+    }),
+
+  dropIndex: (sid: string, db: number, index: string, deleteDocs: boolean) =>
+    request<{ ok: boolean }>(
+      `/sessions/${sid}/search/index${qs({
+        db,
+        index,
+        deleteDocs: deleteDocs ? 1 : undefined,
+      })}`,
+      { method: "DELETE" },
     ),
 };
 

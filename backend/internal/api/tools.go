@@ -294,6 +294,84 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
+func (s *Server) searchInfo(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 15*time.Second)
+	defer cancel()
+	info, err := sess.IndexInfo(ctx, queryInt(r, "db", 0), r.URL.Query().Get("index"))
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, info)
+}
+
+type indexRequest struct {
+	DB       int                       `json:"db"`
+	Index    string                    `json:"index"`
+	On       string                    `json:"on"`
+	Prefixes []string                  `json:"prefixes"`
+	Fields   []redisclient.SchemaField `json:"fields"`
+}
+
+func (s *Server) createIndex(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	var req indexRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	spec := redisclient.IndexSpec{Index: req.Index, On: req.On, Prefixes: req.Prefixes, Fields: req.Fields}
+	if err := sess.CreateIndex(ctx, req.DB, spec); err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (s *Server) alterIndex(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	var req indexRequest
+	if err := decode(r, &req); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	if err := sess.AlterIndex(ctx, req.DB, req.Index, req.Fields); err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (s *Server) dropIndex(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	ctx, cancel := contextWithTimeout(r, 30*time.Second)
+	defer cancel()
+	deleteDocs := q.Get("deleteDocs") == "1" || q.Get("deleteDocs") == "true"
+	if err := sess.DropIndex(ctx, queryInt(r, "db", 0), q.Get("index"), deleteDocs); err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
 // ---------------------------------------------------------------------------
 // MONITOR (Server-Sent Events) profiler
 // ---------------------------------------------------------------------------

@@ -184,6 +184,27 @@ export interface SearchResult {
   hits: SearchHit[];
 }
 
+export interface SchemaField {
+  name: string;
+  type: string;
+  options?: string[];
+}
+
+export interface IndexFieldInfo {
+  name: string;
+  type: string;
+  attrs?: string[];
+}
+
+export interface IndexInfo {
+  name: string;
+  numDocs: number;
+  indexOptions: string[];
+  keyType?: string;
+  prefixes: string[];
+  fields: IndexFieldInfo[];
+}
+
 export type ToolKey =
   | "slowlog"
   | "memory"
