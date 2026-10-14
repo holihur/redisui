@@ -71,6 +71,11 @@ func main() {
 	}
 	multiUser := accounts.Count() > 0
 
+	tokens, err := account.NewTokenStore(filepath.Join(*dataDir, "tokens.json"))
+	if err != nil {
+		log.Fatalf("open token store: %v", err)
+	}
+
 	// --- access token ------------------------------------------------------
 	requireAuth := !*noAuth
 	token := ""
@@ -170,6 +175,7 @@ func main() {
 			AuthToken:     token,
 			ReadOnlyToken: roToken,
 			Accounts:      accounts,
+			Tokens:        tokens,
 			StaticFS:      staticFS,
 			Update:        updater,
 			Proxy:         respProxy,

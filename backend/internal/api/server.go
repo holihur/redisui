@@ -23,6 +23,7 @@ type Server struct {
 	store         *store.Store
 	sessions      *session.Manager
 	accounts      *account.Store
+	tokens        *account.TokenStore
 	logins        *account.SessionManager
 	authToken     string
 	readOnlyToken string
@@ -40,6 +41,8 @@ type Options struct {
 	ReadOnlyToken string
 	// Accounts enables multi-user login when non-nil.
 	Accounts *account.Store
+	// Tokens enables personal access tokens when non-nil.
+	Tokens *account.TokenStore
 	// StaticFS serves the frontend (embedded or os.DirFS). When nil, only the
 	// API is served.
 	StaticFS fs.FS
@@ -59,6 +62,7 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 		store:         st,
 		sessions:      mgr,
 		accounts:      opts.Accounts,
+		tokens:        opts.Tokens,
 		logins:        account.NewSessionManager(12 * time.Hour),
 		authToken:     opts.AuthToken,
 		readOnlyToken: opts.ReadOnlyToken,
@@ -80,6 +84,9 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	mux.HandleFunc("POST /api/users", s.createUser)
 	mux.HandleFunc("PUT /api/users/{username}", s.updateUser)
 	mux.HandleFunc("DELETE /api/users/{username}", s.deleteUser)
+	mux.HandleFunc("GET /api/tokens", s.listTokens)
+	mux.HandleFunc("POST /api/tokens", s.createToken)
+	mux.HandleFunc("DELETE /api/tokens/{id}", s.deleteToken)
 
 	mux.HandleFunc("GET /api/update", s.updateStatus)
 	mux.HandleFunc("POST /api/update/check", s.updateCheck)

@@ -215,6 +215,7 @@ export type ToolKey =
   | "users"
   | "script"
   | "proxy"
+  | "tokens"
   | "about";
 
 export interface ProxyBucket {
@@ -254,6 +255,18 @@ export interface PublicUser {
   connections: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PublicToken {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  connections: string[];
+  createdBy?: string;
+  createdAt: string;
+  expiresAt?: string;
+  lastUsedAt?: string;
 }
 
 export interface LoginResult {

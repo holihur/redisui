@@ -16,6 +16,7 @@ import type {
   ModuleInfo,
   Mutation,
   PublicUser,
+  PublicToken,
   ProxySnapshot,
   SchemaField,
   SearchResult,
@@ -148,6 +149,22 @@ export const api = {
     }),
   deleteUser: (username: string) =>
     request<{ ok: boolean }>(`/users/${encodeURIComponent(username)}`, {
+      method: "DELETE",
+    }),
+
+  listTokens: () => request<{ tokens: PublicToken[] }>("/tokens"),
+  createToken: (input: {
+    name: string;
+    scopes: string[];
+    connections: string[];
+    ttlHours: number;
+  }) =>
+    request<{ token: string; record: PublicToken }>("/tokens", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  deleteToken: (id: string) =>
+    request<{ ok: boolean }>(`/tokens/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
 

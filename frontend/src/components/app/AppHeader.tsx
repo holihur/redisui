@@ -4,6 +4,7 @@ import {
   Database,
   Download,
   Info,
+  KeyRound,
   Menu,
   Network,
   Palette,
@@ -231,6 +232,10 @@ export function AppHeader() {
                 <DropdownMenuItem onSelect={() => setActiveTool("users")}>
                   <Users className="size-4" />
                   {t("Users")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setActiveTool("tokens")}>
+                  <KeyRound className="size-4" />
+                  {t("Access tokens")}
                 </DropdownMenuItem>
               </>
             ) : null}

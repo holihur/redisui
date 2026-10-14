@@ -204,6 +204,11 @@ func (s *Server) resolvePrincipal(token string) (principal, bool) {
 			return principal{Username: sess.Username, Role: sess.Role, Connections: sess.Connections}, true
 		}
 	}
+	if s.tokens != nil {
+		if t, ok := s.tokens.Authenticate(token); ok {
+			return principal{Username: t.Name, Role: t.Role(), Connections: t.Connections}, true
+		}
+	}
 	return principal{}, false
 }
 
