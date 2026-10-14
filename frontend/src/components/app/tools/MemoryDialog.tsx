@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { BarChart } from "@/components/app/charts/Chart";
+import { CopyButton } from "@/components/app/CopyButton";
 import { formatBytes, typeColor } from "@/lib/format";
 import type { MemoryReport } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -143,13 +144,14 @@ export function MemoryDialog({
                     <tbody>
                       {report.topKeys.map((k) => (
                         <tr key={k.key} className="border-b last:border-0">
-                          <td className="max-w-0 px-2 py-1.5">
-                            <span
-                              className="block truncate font-mono"
-                              title={k.key}
-                            >
-                              {k.key}
-                            </span>
+                          <td className="px-2 py-1.5">
+                            <div className="flex items-start gap-1">
+                              <span className="font-mono break-all">{k.key}</span>
+                              <CopyButton
+                                value={k.key}
+                                className="mt-0.5 shrink-0"
+                              />
+                            </div>
                           </td>
                           <td className="px-2 py-1.5">
                             <Badge

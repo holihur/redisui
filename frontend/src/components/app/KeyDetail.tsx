@@ -40,6 +40,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { StringValue } from "./detail/StringValue";
 import { JsonValue } from "./detail/JsonValue";
 import { JsonHighlight } from "./detail/JsonHighlight";
+import { CopyButton } from "./CopyButton";
 import { TimeSeriesValue } from "./detail/TimeSeriesValue";
 import { ModuleKeyValue } from "./detail/ModuleKeyValue";
 import { HashValue } from "./detail/HashValue";
@@ -193,6 +194,7 @@ export function KeyDetail() {
             >
               {selectedKey}
             </span>
+            <CopyButton value={selectedKey} className="shrink-0" />
             <Badge
               variant="outline"
               className={cn("shrink-0 text-[10px]", typeColor(detail?.type ?? "none"))}

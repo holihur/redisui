@@ -149,6 +149,7 @@ const zh: Record<string, string> = {
   "Token deleted": "令牌已删除",
   Copied: "已复制",
   "Copy failed": "复制失败",
+  Copy: "复制",
   "About & updates": "关于与更新",
 
   // sidebar
