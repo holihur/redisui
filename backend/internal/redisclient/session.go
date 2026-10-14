@@ -259,11 +259,11 @@ func (s *Session) Databases(ctx context.Context, db int) ([]DatabaseInfo, error)
 }
 
 type ServerInfo struct {
-	Server   map[string]string `json:"server"`
-	Clients  map[string]string `json:"clients"`
-	Memory   map[string]string `json:"memory"`
-	Keyspace map[string]string `json:"keyspace"`
-	Stats    map[string]string `json:"stats"`
+	Server      map[string]string `json:"server"`
+	Clients     map[string]string `json:"clients"`
+	Memory      map[string]string `json:"memory"`
+	Keyspace    map[string]string `json:"keyspace"`
+	Stats       map[string]string `json:"stats"`
 	Replication map[string]string `json:"replication"`
 }
 

@@ -335,19 +335,16 @@ func (s *Session) GetKey(ctx context.Context, db int, key string, cursor uint64,
 		detail.Length = 1
 
 	case "TSDB-TYPE", "timeseries":
-		// RedisTimeSeries: recent samples plus TS.INFO metadata.
-		samples, err := cli.Do(ctx, "TS.RANGE", key, "-", "+", "COUNT", strconv.FormatInt(count, 10)).Result()
-		if err != nil {
-			return nil, err
-		}
-		info, _ := cli.Do(ctx, "TS.INFO", key).Result()
-		detail.Value = map[string]any{"info": info, "samples": samples}
-		detail.Length = int64(len(toAnySlice(samples)))
-
+		// RedisTimeSeries is handled by moduleValue below.
+		fallthrough
 	default:
-		// Unknown module type (e.g. RedisBloom, RedisGears): expose a hint and
-		// fall back to a raw string representation when one exists.
-		if raw, err := cli.Do(ctx, "GET", key).Result(); err == nil {
+		// Module types (RedisTimeSeries, RedisBloom, ...).
+		if val, length, ok, err := s.moduleValue(ctx, cli, key, typ, count); err != nil {
+			return nil, err
+		} else if ok {
+			detail.Value = val
+			detail.Length = length
+		} else if raw, err := cli.Do(ctx, "GET", key).Result(); err == nil {
 			detail.Value = stringify(raw)
 		} else {
 			detail.Value = map[string]any{

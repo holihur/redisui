@@ -50,12 +50,50 @@ const TYPE_LABELS: Record<string, string> = {
   json: "json",
   "TSDB-TYPE": "timeseries",
   timeseries: "timeseries",
+  "MBbloom--": "bloom",
+  MBbloomCF: "cuckoo",
+  "TopK-TYPE": "topk",
+  "CMSk-TYPE": "cms",
+  tdigest: "tdigest",
 };
+
+export type ModuleKind =
+  | "timeseries"
+  | "bloom"
+  | "cuckoo"
+  | "topk"
+  | "cms"
+  | "tdigest";
+
+/** Classifies a Redis module key type (best-effort across module versions). */
+export function moduleKind(type: string): ModuleKind | null {
+  const t = (type || "").toLowerCase();
+  if (t.includes("tsdb") || t.includes("timeseries")) return "timeseries";
+  if (t.includes("cuckoo") || t.includes("bloomcf") || t.endsWith("cf")) return "cuckoo";
+  if (t.includes("bloom")) return "bloom";
+  if (t.includes("topk")) return "topk";
+  if (t.includes("cms") || t.includes("countmin")) return "cms";
+  if (t.includes("tdigest") || t.includes("tdis")) return "tdigest";
+  return null;
+}
 
 /** Human-friendly label for a Redis (or module) type name. */
 export function typeLabel(type: string): string {
-  return TYPE_LABELS[type] ?? type;
+  return TYPE_LABELS[type] ?? moduleKind(type) ?? type;
 }
+
+const MODULE_COLORS: Record<ModuleKind, string> = {
+  timeseries:
+    "bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+  bloom:
+    "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  cuckoo:
+    "bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20",
+  topk: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  cms: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  tdigest:
+    "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+};
 
 const TYPE_COLORS: Record<string, string> = {
   string: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
@@ -72,7 +110,11 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function typeColor(type: string): string {
-  return TYPE_COLORS[type] ?? "bg-muted text-muted-foreground border-border";
+  const direct = TYPE_COLORS[type];
+  if (direct) return direct;
+  const kind = moduleKind(type);
+  if (kind) return MODULE_COLORS[kind];
+  return "bg-muted text-muted-foreground border-border";
 }
 
 export function truncate(value: string, max = 80): string {

@@ -55,6 +55,37 @@ func (s *Session) Apply(ctx context.Context, m Mutation) (any, error) {
 		}
 		return nil, cli.Do(ctx, "JSON.SET", m.Key, "$", val).Err()
 
+	case "ts.add":
+		val := strings.TrimSpace(m.Value)
+		if val == "" {
+			return nil, fmt.Errorf("value is required")
+		}
+		ts := "*"
+		if m.Count > 0 {
+			ts = strconv.FormatInt(m.Count, 10)
+		}
+		return nil, cli.Do(ctx, "TS.ADD", m.Key, ts, val).Err()
+
+	case "bf.add":
+		return nil, moduleAdd(ctx, cli, "BF.ADD", m)
+	case "cf.add":
+		return nil, moduleAdd(ctx, cli, "CF.ADD", m)
+	case "topk.add":
+		return nil, moduleAdd(ctx, cli, "TOPK.ADD", m)
+	case "tdigest.add":
+		return nil, moduleAdd(ctx, cli, "TDIGEST.ADD", m)
+
+	case "cms.incrby":
+		val := strings.TrimSpace(m.Value)
+		if val == "" {
+			return nil, fmt.Errorf("value is required")
+		}
+		inc := m.Count
+		if inc == 0 {
+			inc = 1
+		}
+		return nil, cli.Do(ctx, "CMS.INCRBY", m.Key, val, strconv.FormatInt(inc, 10)).Err()
+
 	case "hash.set":
 		return nil, cli.HSet(ctx, m.Key, m.Field, m.Value).Err()
 	case "hash.del":
@@ -216,3 +247,12 @@ func normalize(v any) any {
 }
 
 var _ = strconv.Itoa
+
+// moduleAdd issues a single-value add command for RedisBloom-family modules.
+func moduleAdd(ctx context.Context, cli redis.UniversalClient, cmd string, m Mutation) error {
+	val := strings.TrimSpace(m.Value)
+	if val == "" {
+		return fmt.Errorf("value is required")
+	}
+	return cli.Do(ctx, cmd, m.Key, val).Err()
+}

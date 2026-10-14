@@ -35,7 +35,9 @@ token-based remote access.
 **Module support**
 - Module list (`MODULE LIST`) in the server info panel
 - RedisJSON: view and edit documents (`JSON.GET`/`JSON.SET`)
-- RedisTimeSeries: recent samples and `TS.INFO`
+- RedisTimeSeries: view recent samples and add samples (`TS.INFO`, `TS.RANGE`, `TS.ADD`)
+- RedisBloom family: view info and add items
+  (`BF.ADD`, `CF.ADD`, `TOPK.ADD`, `CMS.INCRBY`, `TDIGEST.ADD`; TopK items listed)
 - RediSearch: browse/query indexes and create, alter or drop them
   (`FT._LIST`, `FT.SEARCH`, `FT.INFO`, `FT.CREATE`, `FT.ALTER`, `FT.DROPINDEX`)
 - Other module types degrade gracefully with a hint to the console
@@ -234,8 +236,9 @@ open; leaving it empty grants all connections.
   protocol.
 - Multi-user accounts cover role + connection scope, but there is no
   per-command or per-key ACL.
-- Redis module types are supported for JSON (edit), TimeSeries (view) and
-  RediSearch (query); other module types are shown read-only with a hint.
+- Redis module support covers JSON (edit), TimeSeries (view + add), the
+  RedisBloom family (view + add) and RediSearch (query + index management);
+  other module types are shown read-only with a hint.
 
 ## License
 

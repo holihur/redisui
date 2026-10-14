@@ -33,12 +33,14 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
-import { formatBytes, formatTTL, typeColor, typeLabel } from "@/lib/format";
+import { formatBytes, formatTTL, moduleKind, typeColor, typeLabel } from "@/lib/format";
 import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 import { StringValue } from "./detail/StringValue";
 import { JsonValue } from "./detail/JsonValue";
 import { JsonHighlight } from "./detail/JsonHighlight";
+import { TimeSeriesValue } from "./detail/TimeSeriesValue";
+import { ModuleKeyValue } from "./detail/ModuleKeyValue";
 import { HashValue } from "./detail/HashValue";
 import { ListValue } from "./detail/ListValue";
 import { SetValue } from "./detail/SetValue";
@@ -155,10 +157,14 @@ export function KeyDetail() {
         return <ZSetValue {...props} />;
       case "stream":
         return <StreamValue {...props} />;
-      default:
+      default: {
+        const kind = moduleKind(detail.type);
+        if (kind === "timeseries") return <TimeSeriesValue {...props} />;
+        if (kind) return <ModuleKeyValue {...props} kind={kind} />;
         return (
           <JsonHighlight value={JSON.stringify(detail.value, null, 2) ?? ""} />
         );
+      }
     }
   };
 
