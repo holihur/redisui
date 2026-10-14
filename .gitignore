@@ -12,6 +12,11 @@ backend/redisui
 /backend/web/*
 !/backend/web/.gitkeep
 
+# playwright
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright/
+
 # runtime data & secrets
 backend/data/
 data/

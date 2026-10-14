@@ -1,0 +1,96 @@
+name: E2E
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: "12.4.1"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26.8.2"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.26.2"
+          cache-dependency-path: backend/go.sum
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm run build
+
+      - name: Build self-contained binary
+        run: |
+          set -euo pipefail
+          rm -rf backend/web && mkdir -p backend/web
+          cp -r frontend/dist/. backend/web/
+          (cd backend && CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X main.version=e2e" -o /tmp/redisui .)
+
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Seed Redis
+        run: |
+          set -e
+          seed() {
+            if command -v redis-cli >/dev/null 2>&1; then
+              redis-cli -h 127.0.0.1 "$@"
+            else
+              docker run --rm --network host redis:7 redis-cli -h 127.0.0.1 "$@"
+            fi
+          }
+          seed set user:1 alice
+          seed set user:2 bob
+
+      - name: Run E2E
+        working-directory: frontend
+        env:
+          E2E_TOKEN: e2e-token
+        run: |
+          set -e
+          rm -rf /tmp/redisui-data && mkdir -p /tmp/redisui-data
+          /tmp/redisui -addr 127.0.0.1:8093 -data /tmp/redisui-data \
+            -auth-token e2e-token -no-update &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8093/api/health >/dev/null && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8093/api/health
+          pnpm exec playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
