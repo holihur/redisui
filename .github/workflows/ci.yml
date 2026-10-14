@@ -33,7 +33,17 @@ jobs:
       - name: Vet
         run: go vet ./...
       - name: Test
-        run: go test -race -cover ./...
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Coverage gate
+        run: |
+          total=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          echo "total coverage: ${total}%"
+          if awk -v c="$total" 'BEGIN { exit (c < 30) }'; then
+            echo "coverage OK"
+          else
+            echo "coverage below 30%" >&2
+            exit 1
+          fi
       - name: Build
         run: go build -o /dev/null .
 
