@@ -13,6 +13,7 @@ import {
   Plus,
   Radar,
   Radio,
+  ScrollText,
   Search,
   Terminal,
   Timer,
@@ -237,6 +238,10 @@ export function AppHeader() {
                 <DropdownMenuItem onSelect={() => setActiveTool("tokens")}>
                   <KeyRound className="size-4" />
                   {t("Access tokens")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setActiveTool("audit")}>
+                  <ScrollText className="size-4" />
+                  {t("Audit log")}
                 </DropdownMenuItem>
               </>
             ) : null}

@@ -17,6 +17,7 @@ import (
 
 	"redisui/internal/account"
 	"redisui/internal/api"
+	"redisui/internal/audit"
 	"redisui/internal/oidc"
 	"redisui/internal/proxy"
 	"redisui/internal/secret"
@@ -85,6 +86,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("open token store: %v", err)
 	}
+
+	auditLog, err := audit.New(filepath.Join(*dataDir, "audit.jsonl"))
+	if err != nil {
+		log.Fatalf("open audit log: %v", err)
+	}
+	defer auditLog.Close()
 
 	// --- access token ------------------------------------------------------
 	requireAuth := !*noAuth
@@ -212,6 +219,7 @@ func main() {
 			ReadOnlyToken: roToken,
 			Accounts:      accounts,
 			Tokens:        tokens,
+			Audit:         auditLog,
 			StaticFS:      staticFS,
 			Update:        updater,
 			Proxy:         respProxy,

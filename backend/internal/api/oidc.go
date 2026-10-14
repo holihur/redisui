@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"net/http"
 	"net/url"
@@ -26,8 +28,9 @@ type OIDCConfig struct {
 }
 
 type oidcState struct {
-	nonce   string
-	created time.Time
+	nonce    string
+	verifier string
+	created  time.Time
 }
 
 func (s *Server) oidcEnabled() bool { return s.oidc != nil && s.oidc.Provider != nil }
@@ -39,6 +42,8 @@ func (s *Server) oidcLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	state := randomHex(16)
 	nonce := randomHex(16)
+	verifier := randomHex(32)
+	challenge := pkceChallenge(verifier)
 	s.oidcMu.Lock()
 	// prune expired states
 	for k, v := range s.oidcStates {
@@ -46,10 +51,10 @@ func (s *Server) oidcLogin(w http.ResponseWriter, r *http.Request) {
 			delete(s.oidcStates, k)
 		}
 	}
-	s.oidcStates[state] = oidcState{nonce: nonce, created: time.Now()}
+	s.oidcStates[state] = oidcState{nonce: nonce, verifier: verifier, created: time.Now()}
 	s.oidcMu.Unlock()
 
-	authURL, err := s.oidc.Provider.AuthURL(r.Context(), state, nonce)
+	authURL, err := s.oidc.Provider.AuthURL(r.Context(), state, nonce, challenge)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
@@ -85,7 +90,7 @@ func (s *Server) oidcCallback(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
 
-	tokens, err := s.oidc.Provider.Exchange(ctx, code)
+	tokens, err := s.oidc.Provider.Exchange(ctx, code, st.verifier)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
@@ -162,6 +167,12 @@ func randomHex(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+// pkceChallenge returns the S256 code challenge for a verifier.
+func pkceChallenge(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
 var _ = sync.Mutex{}

@@ -17,6 +17,7 @@ import type {
   Mutation,
   PublicUser,
   PublicToken,
+  AuditEvent,
   ProxySnapshot,
   SchemaField,
   SearchResult,
@@ -172,6 +173,10 @@ export const api = {
       method: "DELETE",
     }),
 
+  listAudit: (limit = 200, actor = "") =>
+    request<{ events: AuditEvent[]; buffered: number }>(
+      `/audit${qs({ limit, actor })}`,
+    ),
   updateStatus: () => request<UpdateStatus>("/update"),
   proxyStatus: () => request<ProxySnapshot>("/proxy"),
   updateCheck: () =>

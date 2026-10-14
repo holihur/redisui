@@ -104,8 +104,9 @@ func (p *Provider) discover(ctx context.Context) (*discovery, error) {
 	return &d, nil
 }
 
-// AuthURL builds the authorization redirect URL.
-func (p *Provider) AuthURL(ctx context.Context, state, nonce string) (string, error) {
+// AuthURL builds the authorization redirect URL. When codeChallenge is set,
+// PKCE (S256) is used.
+func (p *Provider) AuthURL(ctx context.Context, state, nonce, codeChallenge string) (string, error) {
 	d, err := p.discover(ctx)
 	if err != nil {
 		return "", err
@@ -121,6 +122,10 @@ func (p *Provider) AuthURL(ctx context.Context, state, nonce string) (string, er
 	q.Set("scope", strings.Join(p.cfg.Scopes, " "))
 	q.Set("state", state)
 	q.Set("nonce", nonce)
+	if codeChallenge != "" {
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+	}
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
@@ -132,8 +137,8 @@ type Tokens struct {
 	ExpiresIn   int
 }
 
-// Exchange swaps an authorization code for tokens.
-func (p *Provider) Exchange(ctx context.Context, code string) (*Tokens, error) {
+// Exchange swaps an authorization code for tokens (with optional PKCE verifier).
+func (p *Provider) Exchange(ctx context.Context, code, codeVerifier string) (*Tokens, error) {
 	d, err := p.discover(ctx)
 	if err != nil {
 		return nil, err
@@ -143,6 +148,9 @@ func (p *Provider) Exchange(ctx context.Context, code string) (*Tokens, error) {
 	form.Set("code", code)
 	form.Set("redirect_uri", p.cfg.RedirectURL)
 	form.Set("client_id", p.cfg.ClientID)
+	if codeVerifier != "" {
+		form.Set("code_verifier", codeVerifier)
+	}
 	if p.cfg.ClientSecret != "" {
 		form.Set("client_secret", p.cfg.ClientSecret)
 	}

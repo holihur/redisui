@@ -132,6 +132,17 @@ const zh: Record<string, string> = {
   "No output yet.": "暂无输出。",
   Users: "用户",
   "Access tokens": "访问令牌",
+  "Audit log": "审计日志",
+  "Recent security-relevant API activity (mutations and authentication).":
+    "最近与安全相关的 API 活动（变更类请求与登录）。",
+  "Filter by actor…": "按操作者过滤…",
+  "{count} events": "{count} 条事件",
+  Actor: "操作者",
+  Role: "角色",
+  Method: "方法",
+  Path: "路径",
+  Status: "状态",
+  "No audit events.": "暂无审计事件。",
   "Personal access tokens for automation and the MCP endpoint. Scopes: read, write, admin.":
     "用于自动化与 MCP 端点的个人访问令牌。Scope：read、write、admin。",
   "New token (shown once)": "新令牌（仅显示一次）",

@@ -228,6 +228,7 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 		ip := s.clientIP(r)
 		if !s.limiter.allow(ip) {
 			w.Header().Set("Retry-After", "60")
+			s.auditRequest(r, "anonymous", "", http.StatusTooManyRequests)
 			writeErr(w, http.StatusTooManyRequests, errString("too many failed authentication attempts, try again later"))
 			return
 		}
@@ -235,12 +236,15 @@ func (s *Server) withAuth(next http.Handler) http.Handler {
 		p, ok := s.resolvePrincipal(bearerToken(r))
 		if !ok {
 			s.limiter.fail(ip)
+			s.authFailure()
+			s.auditRequest(r, "anonymous", "", http.StatusUnauthorized)
 			writeErr(w, http.StatusUnauthorized, errString("unauthorized: sign in or provide a valid access token"))
 			return
 		}
 		s.limiter.reset(ip)
 
 		if p.Role == account.RoleViewer && !readOnlyAllowed(r.Method, r.URL.Path) {
+			s.auditRequest(r, p.Username, string(p.Role), http.StatusForbidden)
 			writeErr(w, http.StatusForbidden, errString("viewer role cannot perform this action"))
 			return
 		}
@@ -307,6 +311,8 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := s.accounts.Authenticate(req.Username, req.Password)
 	if err != nil {
 		s.limiter.fail(ip)
+		s.authFailure()
+		s.auditRequest(r, req.Username, "", http.StatusUnauthorized)
 		writeErr(w, http.StatusUnauthorized, errString("invalid username or password"))
 		return
 	}

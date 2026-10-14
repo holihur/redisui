@@ -215,6 +215,7 @@ export type ToolKey =
   | "users"
   | "proxy"
   | "tokens"
+  | "audit"
   | "about";
 
 export interface ProxyBucket {
@@ -266,6 +267,17 @@ export interface PublicToken {
   createdAt: string;
   expiresAt?: string;
   lastUsedAt?: string;
+}
+
+export interface AuditEvent {
+  time: string;
+  actor: string;
+  role: string;
+  method: string;
+  path: string;
+  status: number;
+  remote?: string;
+  durationMs?: number;
 }
 
 export interface LoginResult {

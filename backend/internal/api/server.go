@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"redisui/internal/account"
+	"redisui/internal/audit"
+	"redisui/internal/metrics"
 	"redisui/internal/proxy"
 	"redisui/internal/session"
 	"redisui/internal/store"
@@ -32,6 +34,8 @@ type Server struct {
 	trustProxy    bool
 	updater       *update.Updater
 	proxy         *proxy.Proxy
+	audit         *audit.Logger
+	metrics       *metrics.Metrics
 	oidc          *OIDCConfig
 	oidcMu        sync.Mutex
 	oidcStates    map[string]oidcState
@@ -56,6 +60,8 @@ type Options struct {
 	Proxy *proxy.Proxy
 	// OIDC enables OpenID Connect login when non-nil.
 	OIDC *OIDCConfig
+	// Audit records security-relevant activity when non-nil.
+	Audit *audit.Logger
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -77,6 +83,8 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 		updater:       opts.Update,
 		proxy:         opts.Proxy,
 		oidc:          opts.OIDC,
+		audit:         opts.Audit,
+		metrics:       metrics.New(),
 	}
 	if opts.OIDC != nil {
 		s.oidcStates = map[string]oidcState{}
@@ -91,6 +99,9 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	mux.HandleFunc("GET /api/auth/me", s.authMe)
 	mux.HandleFunc("GET /api/auth/oidc/login", s.oidcLogin)
 	mux.HandleFunc("GET /api/auth/oidc/callback", s.oidcCallback)
+
+	mux.HandleFunc("GET /api/audit", s.auditList)
+	mux.HandleFunc("GET /api/metrics", s.metricsHandler)
 
 	mux.HandleFunc("GET /api/users", s.listUsers)
 	mux.HandleFunc("POST /api/users", s.createUser)
@@ -148,7 +159,7 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 		mux.Handle("/", spaHandler(opts.StaticFS))
 	}
 
-	return withRecovery(withLogging(withCORS(opts.CORSOrigin, s.withAuth(mux))))
+	return withRecovery(withLogging(withCORS(opts.CORSOrigin, s.withAuth(s.withMetrics(s.withAudit(mux))))))
 }
 
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
