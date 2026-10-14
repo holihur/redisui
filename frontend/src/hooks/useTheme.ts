@@ -1,29 +1,69 @@
 import { useCallback, useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+export type ThemeMode = "light" | "dark";
+export type ThemeAccent =
+  | "default"
+  | "blue"
+  | "emerald"
+  | "violet"
+  | "rose"
+  | "amber";
 
-const STORAGE_KEY = "redisui-theme";
+export const ACCENTS: { value: ThemeAccent; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "blue", label: "Blue" },
+  { value: "emerald", label: "Emerald" },
+  { value: "violet", label: "Violet" },
+  { value: "rose", label: "Rose" },
+  { value: "amber", label: "Amber" },
+];
 
-function initialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark") return stored;
-  return "dark";
+const MODE_KEY = "redisui-theme";
+const ACCENT_KEY = "redisui-accent";
+
+function isMode(v: string | null): v is ThemeMode {
+  return v === "light" || v === "dark";
+}
+function isAccent(v: string | null): v is ThemeAccent {
+  return !!v && ACCENTS.some((a) => a.value === v);
 }
 
+function initialMode(): ThemeMode {
+  if (typeof window === "undefined") return "dark";
+  const stored = window.localStorage.getItem(MODE_KEY);
+  return isMode(stored) ? stored : "dark";
+}
+function initialAccent(): ThemeAccent {
+  if (typeof window === "undefined") return "default";
+  const stored = window.localStorage.getItem(ACCENT_KEY);
+  return isAccent(stored) ? stored : "default";
+}
+
+/** Manages light/dark mode plus an accent theme applied via data-theme. */
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [mode, setMode] = useState<ThemeMode>(initialMode);
+  const [accent, setAccent] = useState<ThemeAccent>(initialAccent);
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
-    window.localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+    root.classList.toggle("dark", mode === "dark");
+    root.style.colorScheme = mode;
+    window.localStorage.setItem(MODE_KEY, mode);
+  }, [mode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (accent === "default") {
+      delete root.dataset.theme;
+    } else {
+      root.dataset.theme = accent;
+    }
+    window.localStorage.setItem(ACCENT_KEY, accent);
+  }, [accent]);
 
   const toggle = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+    setMode((m) => (m === "dark" ? "light" : "dark"));
   }, []);
 
-  return { theme, setTheme, toggle };
+  return { mode, setMode, toggle, accent, setAccent };
 }

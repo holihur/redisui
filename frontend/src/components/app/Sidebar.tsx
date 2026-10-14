@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import type { Connection } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -72,6 +73,7 @@ export function Sidebar() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const sidebarWidth = useAppStore((s) => s.sidebarWidth);
   const isDesktop = useIsDesktop();
+  const { t } = useI18n();
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [deleteTarget, setDeleteTarget] = useState<Connection | null>(null);
@@ -80,13 +82,13 @@ export function Sidebar() {
     setCollapsed((c) => ({ ...c, [id]: !c[id] }));
 
   const handleTest = async (conn: Connection) => {
-    const t = toast.loading(`Testing ${conn.name}…`);
+    const tid = toast.loading(t("Testing {name}…", { name: conn.name }));
     try {
       const res = await api.testConnection({ id: conn.id });
-      if (res.ok) toast.success(`Connected to ${conn.name}`, { id: t });
-      else toast.error(res.error ?? "Connection failed", { id: t });
+      if (res.ok) toast.success(t("Connected to {name}", { name: conn.name }), { id: tid });
+      else toast.error(res.error ?? t("Connection failed"), { id: tid });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e), { id: t });
+      toast.error(e instanceof Error ? e.message : String(e), { id: tid });
     }
   };
 
@@ -116,7 +118,7 @@ export function Sidebar() {
             }
           : undefined,
       });
-      toast.success("Connection duplicated");
+      toast.success(t("Connection duplicated"));
       await loadConnections();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -128,7 +130,7 @@ export function Sidebar() {
     try {
       await api.deleteConnection(deleteTarget.id);
       if (activeConnId === deleteTarget.id) await disconnect();
-      toast.success("Connection deleted");
+      toast.success(t("Connection deleted"));
       await loadConnections();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -159,7 +161,7 @@ export function Sidebar() {
       >
       <div className="flex h-10 items-center justify-between border-b px-3">
         <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Connections
+          {t("Connections")}
         </span>
         <div className="flex items-center gap-1">
           <Button
@@ -167,7 +169,7 @@ export function Sidebar() {
             size="icon-sm"
             disabled={!session}
             onClick={() => void refreshDatabases()}
-            title="Refresh"
+            title={t("Refresh")}
           >
             <RefreshCw className="size-3.5" />
           </Button>
@@ -175,7 +177,7 @@ export function Sidebar() {
             variant="ghost"
             size="icon-sm"
             onClick={() => openConnectionDialog(null)}
-            title="New connection"
+            title={t("New connection")}
           >
             <Plus className="size-3.5" />
           </Button>
@@ -184,7 +186,7 @@ export function Sidebar() {
             size="icon-sm"
             className="md:hidden"
             onClick={() => setSidebarOpen(false)}
-            title="Close"
+            title={t("Close")}
           >
             <X className="size-3.5" />
           </Button>
@@ -195,12 +197,12 @@ export function Sidebar() {
         <div className="p-2">
           {connectionsLoading && connections.length === 0 ? (
             <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-              Loading…
+              {t("Loading…")}
             </p>
           ) : connections.length === 0 ? (
             <div className="px-2 py-6 text-center">
               <p className="text-xs text-muted-foreground">
-                No connections yet.
+                {t("No connections yet.")}
               </p>
               <Button
                 variant="outline"
@@ -209,7 +211,7 @@ export function Sidebar() {
                 onClick={() => openConnectionDialog(null)}
               >
                 <Plus className="size-3.5" />
-                Add connection
+                {t("Add connection")}
               </Button>
             </div>
           ) : (
@@ -270,34 +272,34 @@ export function Sidebar() {
                         {isActive ? (
                           <ContextMenuItem onSelect={() => void disconnect()}>
                             <Unplug className="size-4" />
-                            Disconnect
+                            {t("Disconnect")}
                           </ContextMenuItem>
                         ) : (
                           <ContextMenuItem
                             onSelect={() => void openConnection(conn.id)}
                           >
                             <Plug className="size-4" />
-                            Connect
+                            {t("Connect")}
                           </ContextMenuItem>
                         )}
                         <ContextMenuItem
                           onSelect={() => void handleTest(conn)}
                         >
                           <Server className="size-4" />
-                          Test connection
+                          {t("Test connection")}
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
                           onSelect={() => openConnectionDialog(conn)}
                         >
                           <Pencil className="size-4" />
-                          Edit…
+                          {t("Edit…")}
                         </ContextMenuItem>
                         <ContextMenuItem
                           onSelect={() => void handleDuplicate(conn)}
                         >
                           <Copy className="size-4" />
-                          Duplicate
+                          {t("Duplicate")}
                         </ContextMenuItem>
                         <ContextMenuSeparator />
                         <ContextMenuItem
@@ -305,7 +307,7 @@ export function Sidebar() {
                           onSelect={() => setDeleteTarget(conn)}
                         >
                           <Trash2 className="size-4" />
-                          Delete
+                          {t("Delete")}
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
@@ -314,7 +316,7 @@ export function Sidebar() {
                       <div className="mt-0.5 mb-1 ml-5 space-y-0.5 border-l pl-2">
                         {databases.length === 0 ? (
                           <p className="px-2 py-1 text-[11px] text-muted-foreground">
-                            Loading databases…
+                            {t("Loading databases…")}
                           </p>
                         ) : (
                           databases.map((db) => (
@@ -357,7 +359,7 @@ export function Sidebar() {
       {session ? (
         <div className="border-t px-3 py-2 text-[11px] text-muted-foreground">
           <div className="flex items-center justify-between">
-            <span>Keys loaded</span>
+            <span>{t("Keys loaded")}</span>
             <span className="font-mono">{keysScanned}</span>
           </div>
         </div>
@@ -369,19 +371,21 @@ export function Sidebar() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete connection?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Delete connection?")}</AlertDialogTitle>
             <AlertDialogDescription>
-              “{deleteTarget?.name}” will be permanently removed. This does not
-              affect the Redis server.
+              {t(
+                "“{name}” will be permanently removed. This does not affect the Redis server.",
+                { name: deleteTarget?.name ?? "" },
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDelete()}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              Delete
+              {t("Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -33,6 +33,7 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
+import { useI18n } from "@/lib/i18n";
 import { formatBytes, formatTTL, moduleKind, typeColor, typeLabel } from "@/lib/format";
 import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
@@ -59,6 +60,7 @@ export function KeyDetail() {
   const afterMutation = useAppStore((s) => s.afterMutation);
   const detailWidth = useAppStore((s) => s.detailWidth);
   const isDesktop = useIsDesktop();
+  const { t } = useI18n();
 
   const [busy, setBusy] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -178,7 +180,7 @@ export function KeyDetail() {
           variant="ghost"
           size="icon-sm"
           className="mt-0.5 shrink-0 md:hidden"
-          title="Back to keys"
+          title={t("Back to keys")}
           onClick={() => void selectKey(null)}
         >
           <ArrowLeft className="size-4" />
@@ -216,14 +218,14 @@ export function KeyDetail() {
             variant="ghost"
             size="icon-sm"
             onClick={() => void refreshKey()}
-            title="Refresh"
+            title={t("Refresh")}
           >
             <RefreshCw className="size-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon-sm"
-            title="Rename"
+            title={t("Rename")}
             onClick={() => {
               setRenameValue(selectedKey);
               setRenameOpen(true);
@@ -234,7 +236,7 @@ export function KeyDetail() {
           <Button
             variant="ghost"
             size="icon-sm"
-            title="Set TTL"
+            title={t("Set TTL")}
             onClick={() => {
               setTtlValue(detail && detail.ttl > 0 ? String(detail.ttl) : "");
               setTtlOpen(true);
@@ -245,7 +247,7 @@ export function KeyDetail() {
           <Button
             variant="ghost"
             size="icon-sm"
-            title="Delete key"
+            title={t("Delete key")}
             onClick={() => setDeleteOpen(true)}
           >
             <Trash2 className="size-3.5 text-destructive" />
@@ -253,7 +255,7 @@ export function KeyDetail() {
           <Button
             variant="ghost"
             size="icon-sm"
-            title="Close"
+            title={t("Close")}
             onClick={() => void selectKey(null)}
           >
             <X className="size-3.5" />
@@ -272,7 +274,11 @@ export function KeyDetail() {
             onClick={() => void loadMoreDetail()}
           >
             {loading ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Load more ({detail.length - (Array.isArray(detail.value) ? detail.value.length : 0)} remaining)
+            {t("Load more ({count} remaining)", {
+              count:
+                detail.length -
+                (Array.isArray(detail.value) ? detail.value.length : 0),
+            })}
           </Button>
         </div>
       ) : null}
@@ -280,10 +286,10 @@ export function KeyDetail() {
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rename key</DialogTitle>
+            <DialogTitle>{t("Rename key")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
-            <Label htmlFor="rename-key">New key name</Label>
+            <Label htmlFor="rename-key">{t("New key name")}</Label>
             <Input
               id="rename-key"
               value={renameValue}
@@ -293,10 +299,10 @@ export function KeyDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameOpen(false)}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button disabled={busy} onClick={() => void handleRename()}>
-              Rename
+              {t("Rename")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -305,10 +311,10 @@ export function KeyDetail() {
       <Dialog open={ttlOpen} onOpenChange={setTtlOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Expiration</DialogTitle>
+            <DialogTitle>{t("Expiration")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
-            <Label htmlFor="ttl-value">TTL (seconds)</Label>
+            <Label htmlFor="ttl-value">{t("TTL (seconds)")}</Label>
             <Input
               id="ttl-value"
               value={ttlValue}
@@ -324,10 +330,10 @@ export function KeyDetail() {
               onClick={() => void handleTtl(true)}
               disabled={busy}
             >
-              Remove expiration
+              {t("Remove expiration")}
             </Button>
             <Button onClick={() => void handleTtl(false)} disabled={busy}>
-              Set expiration
+              {t("Set expiration")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -336,18 +342,18 @@ export function KeyDetail() {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete key?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Delete key?")}</AlertDialogTitle>
             <AlertDialogDescription className="font-mono">
               {selectedKey}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDelete()}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              Delete
+              {t("Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

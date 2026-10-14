@@ -4,14 +4,13 @@ import {
   Download,
   Info,
   Menu,
-  Moon,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
   Radar,
   Radio,
   Search,
-  Sun,
   Terminal,
   Timer,
   Unplug,
@@ -25,6 +24,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -33,11 +34,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useTheme } from "@/hooks/useTheme";
+import {
+  ACCENTS,
+  useTheme,
+  type ThemeAccent,
+  type ThemeMode,
+} from "@/hooks/useTheme";
+import { LANGUAGES, useI18n, type Lang } from "@/lib/i18n";
 import { useAppStore } from "@/store/useAppStore";
 
 export function AppHeader() {
-  const { theme, toggle } = useTheme();
+  const { t, lang, setLang } = useI18n();
+  const { mode, setMode, accent, setAccent } = useTheme();
   const session = useAppStore((s) => s.session);
   const consoleOpen = useAppStore((s) => s.consoleOpen);
   const setConsoleOpen = useAppStore((s) => s.setConsoleOpen);
@@ -52,13 +60,17 @@ export function AppHeader() {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const updateStatus = useAppStore((s) => s.updateStatus);
 
+  const collapseLabel = sidebarCollapsed
+    ? t("Show connections")
+    : t("Hide connections");
+
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar px-2 sm:px-3">
       <Button
         variant="ghost"
         size="icon"
         className="shrink-0 md:hidden"
-        aria-label="Open connections"
+        aria-label={t("Open connections")}
         onClick={() => setSidebarOpen(true)}
       >
         <Menu className="size-4" />
@@ -68,8 +80,8 @@ export function AppHeader() {
         variant="ghost"
         size="icon"
         className="hidden shrink-0 md:inline-flex"
-        aria-label={sidebarCollapsed ? "Show connections" : "Hide connections"}
-        title={sidebarCollapsed ? "Show connections" : "Hide connections"}
+        aria-label={collapseLabel}
+        title={collapseLabel}
         onClick={toggleSidebar}
       >
         {sidebarCollapsed ? (
@@ -128,7 +140,9 @@ export function AppHeader() {
           ) : null}
         </div>
       ) : (
-        <span className="truncate text-sm text-muted-foreground">Not connected</span>
+        <span className="truncate text-sm text-muted-foreground">
+          {t("Not connected")}
+        </span>
       )}
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
@@ -143,7 +157,7 @@ export function AppHeader() {
               <Terminal className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Command console (Ctrl/Cmd+K)</TooltipContent>
+          <TooltipContent>{t("Command console (Ctrl/Cmd+K)")}</TooltipContent>
         </Tooltip>
 
         <Tooltip>
@@ -157,7 +171,7 @@ export function AppHeader() {
               <Info className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Server information</TooltipContent>
+          <TooltipContent>{t("Server information")}</TooltipContent>
         </Tooltip>
 
         <DropdownMenu>
@@ -166,7 +180,7 @@ export function AppHeader() {
               variant="ghost"
               size="icon"
               disabled={!session}
-              title="Diagnostics"
+              title={t("Diagnostics")}
               className="relative"
             >
               <Wrench className="size-4" />
@@ -176,44 +190,44 @@ export function AppHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel>Diagnostics</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("Diagnostics")}</DropdownMenuLabel>
             <DropdownMenuItem onSelect={() => setActiveTool("slowlog")}>
               <Timer className="size-4" />
-              Slow log
+              {t("Slow log")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveTool("memory")}>
               <Activity className="size-4" />
-              Memory analysis
+              {t("Memory analysis")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveTool("clients")}>
               <Users className="size-4" />
-              Connected clients
+              {t("Connected clients")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveTool("pubsub")}>
               <Radio className="size-4" />
-              Pub/Sub monitor
+              {t("Pub/Sub monitor")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveTool("monitor")}>
               <Radar className="size-4" />
-              Profiler (MONITOR)
+              {t("Profiler (MONITOR)")}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveTool("search")}>
               <Search className="size-4" />
-              Search (RediSearch)
+              {t("Search (RediSearch)")}
             </DropdownMenuItem>
             {role === "admin" ? (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setActiveTool("users")}>
                   <Users className="size-4" />
-                  Users
+                  {t("Users")}
                 </DropdownMenuItem>
               </>
             ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setActiveTool("about")}>
               <Download className="size-4" />
-              About & updates
+              {t("About & updates")}
               {updateStatus?.updateAvailable ? (
                 <Badge
                   variant="secondary"
@@ -226,18 +240,51 @@ export function AppHeader() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={toggle}>
-              {theme === "dark" ? (
-                <Sun className="size-4" />
-              ) : (
-                <Moon className="size-4" />
-              )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" title={t("Appearance")}>
+              <Palette className="size-4" />
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>Toggle theme</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel>{t("Appearance")}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={mode}
+              onValueChange={(v) => setMode(v as ThemeMode)}
+            >
+              <DropdownMenuRadioItem value="light">
+                {t("Light")}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="dark">
+                {t("Dark")}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t("Accent")}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={accent}
+              onValueChange={(v) => setAccent(v as ThemeAccent)}
+            >
+              {ACCENTS.map((a) => (
+                <DropdownMenuRadioItem key={a.value} value={a.value}>
+                  {a.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t("Language")}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={lang}
+              onValueChange={(v) => setLang(v as Lang)}
+            >
+              {LANGUAGES.map((l) => (
+                <DropdownMenuRadioItem key={l.value} value={l.value}>
+                  {l.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {username ? (
           <span className="hidden max-w-28 truncate text-xs text-muted-foreground lg:inline">
@@ -250,14 +297,14 @@ export function AppHeader() {
         {session ? (
           <Button variant="ghost" size="sm" onClick={() => void disconnect()}>
             <Unplug className="size-4" />
-            <span className="hidden sm:inline">Disconnect</span>
+            <span className="hidden sm:inline">{t("Disconnect")}</span>
           </Button>
         ) : null}
 
         {role === "admin" ? (
           <Button size="sm" onClick={() => openConnectionDialog(null)}>
             <Plus className="size-4" />
-            <span className="hidden sm:inline">Connection</span>
+            <span className="hidden sm:inline">{t("Connection")}</span>
           </Button>
         ) : null}
       </div>

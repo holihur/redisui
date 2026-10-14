@@ -23,6 +23,12 @@ token-based remote access.
 - Pub/Sub monitor with live streaming and publish (`SSE`)
 - Profiler: live `MONITOR` command stream (`SSE`)
 
+**Interface**
+- Light/dark mode plus accent themes (blue, emerald, violet, rose, amber)
+- i18n: English and Simplified Chinese, switchable live under **Appearance**
+- Collapsible sidebar and draggable panel widths (persisted locally)
+- Self-contained embedded frontend; no separate web assets to deploy
+
 **Connectivity**
 - Direct, Sentinel (master name + sentinel auth) and Cluster modes
 - SSH jump host with optional pinned host-key fingerprint

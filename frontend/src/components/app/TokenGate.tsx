@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { UserRole } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -20,6 +21,7 @@ function normalizeRole(r: string): UserRole {
  */
 export function TokenGate({ children }: { children: ReactNode }) {
   const setPrincipal = useAppStore((s) => s.setPrincipal);
+  const { t } = useI18n();
   const [state, setState] = useState<"loading" | "locked" | "ready">("loading");
   const [multiUser, setMultiUser] = useState(false);
   const [tab, setTab] = useState<"login" | "token">("token");
@@ -62,7 +64,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       }
       setState("locked");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Cannot reach the server");
+      setError(e instanceof Error ? e.message : t("Cannot reach the server"));
       setState("locked");
     }
   }, [apply]);
@@ -102,7 +104,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       apply(res);
     } catch (err) {
       clearAuthToken();
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("Login failed"));
     } finally {
       setBusy(false);
     }
@@ -119,7 +121,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
       apply(res);
     } catch (err) {
       clearAuthToken();
-      setError(err instanceof Error ? err.message : "Invalid access token");
+      setError(err instanceof Error ? err.message : t("Invalid access token"));
     } finally {
       setBusy(false);
     }
@@ -137,9 +139,11 @@ export function TokenGate({ children }: { children: ReactNode }) {
           <div>
             <h1 className="text-base font-semibold">RedisUI</h1>
             <p className="text-xs text-muted-foreground">
-              {showTabs && tab === "login"
-                ? "Sign in to continue"
-                : "Enter the access token to continue"}
+              {t(
+                showTabs && tab === "login"
+                  ? "Sign in to continue"
+                  : "Enter the access token to continue",
+              )}
             </p>
           </div>
         </div>
@@ -155,7 +159,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
                   : "text-muted-foreground"
               }`}
             >
-              Sign in
+              {t("Sign in")}
             </button>
             <button
               type="button"
@@ -166,7 +170,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
                   : "text-muted-foreground"
               }`}
             >
-              Access token
+              {t("Access token")}
             </button>
           </div>
         ) : null}
@@ -174,7 +178,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
         {tab === "login" && showTabs ? (
           <form onSubmit={submitLogin}>
             <div className="grid gap-2">
-              <Label htmlFor="login-user">Username</Label>
+              <Label htmlFor="login-user">{t("Username")}</Label>
               <Input
                 id="login-user"
                 autoFocus
@@ -184,7 +188,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
               />
             </div>
             <div className="mt-3 grid gap-2">
-              <Label htmlFor="login-pass">Password</Label>
+              <Label htmlFor="login-pass">{t("Password")}</Label>
               <Input
                 id="login-pass"
                 type="password"
@@ -206,13 +210,13 @@ export function TokenGate({ children }: { children: ReactNode }) {
               ) : (
                 <LogIn className="size-4" />
               )}
-              Sign in
+              {t("Sign in")}
             </Button>
           </form>
         ) : (
           <form onSubmit={submitToken}>
             <div className="grid gap-2">
-              <Label htmlFor="access-token">Access token</Label>
+              <Label htmlFor="access-token">{t("Access token")}</Label>
               <Input
                 id="access-token"
                 type="password"
@@ -220,7 +224,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
                 autoComplete="off"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Paste the token from the server log"
+                placeholder={t("Paste the token from the server log")}
                 className="font-mono"
               />
             </div>
@@ -237,7 +241,7 @@ export function TokenGate({ children }: { children: ReactNode }) {
               ) : (
                 <KeyRound className="size-4" />
               )}
-              Unlock
+              {t("Unlock")}
             </Button>
           </form>
         )}
@@ -245,9 +249,10 @@ export function TokenGate({ children }: { children: ReactNode }) {
         <p className="mt-4 flex items-start gap-1.5 text-[11px] text-muted-foreground">
           <ShieldAlert className="mt-px size-3.5 shrink-0" />
           <span>
-            The token is printed at startup and stored in{" "}
-            <code className="font-mono">&lt;data-dir&gt;/token</code>. Accounts
-            are managed by an admin under Diagnostics → Users.
+            {t("The token is printed at startup and stored in")}{" "}
+            <code className="font-mono">&lt;data-dir&gt;/token</code>
+            {" "}
+            {t("Accounts are managed by an admin under Diagnostics → Users.")}
           </span>
         </p>
       </div>

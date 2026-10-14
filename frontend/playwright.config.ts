@@ -10,6 +10,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8093",
     trace: "on-first-retry",
+    locale: "en-US",
     viewport: { width: 1280, height: 800 },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

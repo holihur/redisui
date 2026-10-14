@@ -40,6 +40,7 @@ import {
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useI18n } from "@/lib/i18n";
 import { REDIS_TYPES, typeLabel } from "@/lib/format";
 import type { RedisTypeFilter } from "@/lib/format";
 import { buildKeyTree, collectExpandablePaths } from "@/lib/keytree";
@@ -73,6 +74,7 @@ export function KeyBrowser({ className }: { className?: string }) {
   const afterMutation = useAppStore((s) => s.afterMutation);
   const role = useAppStore((s) => s.role);
   const canWrite = role !== "viewer";
+  const { t } = useI18n();
 
   const [search, setSearch] = useState("*");
   const debounced = useDebounce(search, 350);
@@ -123,7 +125,7 @@ export function KeyBrowser({ className }: { className?: string }) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pattern, e.g. user:*"
+            placeholder={t("Pattern, e.g. user:*")}
             className="h-8 pl-8 font-mono text-xs"
           />
         </div>
@@ -152,7 +154,7 @@ export function KeyBrowser({ className }: { className?: string }) {
           size="icon-sm"
           onClick={() => void loadKeys(true)}
           disabled={keysLoading}
-          title="Refresh"
+          title={t("Refresh")}
         >
           {keysLoading ? (
             <Loader2 className="size-4 animate-spin" />
@@ -166,7 +168,7 @@ export function KeyBrowser({ className }: { className?: string }) {
           size="icon-sm"
           onClick={() => setDeleteOpen(true)}
           disabled={!canWrite || !selectedKey}
-          title="Delete selected key"
+          title={t("Delete selected key")}
         >
           <Trash2 className="size-4" />
         </Button>
@@ -174,25 +176,25 @@ export function KeyBrowser({ className }: { className?: string }) {
         {canWrite ? (
           <Button size="sm" onClick={() => setNewKeyOpen(true)}>
             <Plus className="size-4" />
-            <span className="hidden sm:inline">New</span>
+            <span className="hidden sm:inline">{t("New")}</span>
           </Button>
         ) : null}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" title="More actions">
+            <Button variant="ghost" size="icon-sm" title={t("More actions")}>
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem onSelect={() => setExportOpen(true)}>
               <Download className="size-4" />
-              Export keys…
+              {t("Export keys…")}
             </DropdownMenuItem>
             {canWrite ? (
               <DropdownMenuItem onSelect={() => setImportOpen(true)}>
                 <Upload className="size-4" />
-                Import keys…
+                {t("Import keys…")}
               </DropdownMenuItem>
             ) : null}
             {canWrite ? (
@@ -203,7 +205,7 @@ export function KeyBrowser({ className }: { className?: string }) {
                   onSelect={() => setBulkOpen(true)}
                 >
                   <Trash2 className="size-4" />
-                  Delete by pattern…
+                  {t("Delete by pattern…")}
                 </DropdownMenuItem>
               </>
             ) : null}
@@ -215,7 +217,7 @@ export function KeyBrowser({ className }: { className?: string }) {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
           <KeyRound className="size-7 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No keys found in db{activeDb}
+            {t("No keys found in db{db}", { db: activeDb })}
           </p>
         </div>
       ) : (
@@ -232,8 +234,11 @@ export function KeyBrowser({ className }: { className?: string }) {
 
       <div className="flex h-9 shrink-0 items-center justify-between gap-2 border-t px-3 text-[11px] text-muted-foreground">
         <span className="truncate">
-          {keys.length} key{keys.length === 1 ? "" : "s"} loaded
-          {keysDone ? "" : " · more available"}
+          {t(
+            keys.length === 1 ? "{count} key loaded" : "{count} keys loaded",
+            { count: keys.length },
+          )}
+          {keysDone ? "" : t(" · more available")}
         </span>
         <div className="flex shrink-0 items-center gap-1">
           {expandablePaths.length > 0 ? (
@@ -243,7 +248,7 @@ export function KeyBrowser({ className }: { className?: string }) {
               className="h-6 text-[11px]"
               onClick={toggleAll}
             >
-              {allOpen ? "Collapse all" : "Expand all"}
+              {t(allOpen ? "Collapse all" : "Expand all")}
             </Button>
           ) : null}
           {!keysDone ? (
@@ -257,7 +262,7 @@ export function KeyBrowser({ className }: { className?: string }) {
               {keysLoading ? (
                 <Loader2 className="size-3 animate-spin" />
               ) : null}
-              Load more
+              {t("Load more")}
             </Button>
           ) : null}
         </div>
@@ -279,13 +284,13 @@ export function KeyBrowser({ className }: { className?: string }) {
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete key?</AlertDialogTitle>
+            <AlertDialogTitle>{t("Delete key?")}</AlertDialogTitle>
             <AlertDialogDescription className="font-mono">
               {selectedKey}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDelete()}
               className="bg-destructive text-white hover:bg-destructive/90"

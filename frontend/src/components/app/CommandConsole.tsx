@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -29,6 +30,7 @@ export function CommandConsole() {
   const activeDb = useAppStore((s) => s.activeDb);
   const databases = useAppStore((s) => s.databases);
   const afterMutation = useAppStore((s) => s.afterMutation);
+  const { t } = useI18n();
 
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -106,7 +108,7 @@ export function CommandConsole() {
     >
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-2">
         <Terminal className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium">Console</span>
+        <span className="text-xs font-medium">{t("Console")}</span>
         <Badge variant="secondary" className="font-mono text-[10px]">
           db{db}
         </Badge>
@@ -114,7 +116,7 @@ export function CommandConsole() {
           <Button
             variant="ghost"
             size="icon-xs"
-            title="Clear"
+            title={t("Clear")}
             onClick={() => setEntries([])}
           >
             <Eraser className="size-3" />
@@ -122,7 +124,7 @@ export function CommandConsole() {
           <Button
             variant="ghost"
             size="icon-xs"
-            title="Hide (Ctrl/Cmd+K)"
+            title={t("Hide (Ctrl/Cmd+K)")}
             onClick={() => setOpen(false)}
           >
             <X className="size-3" />
@@ -136,7 +138,7 @@ export function CommandConsole() {
       >
         {entries.length === 0 ? (
           <p className="px-1 py-2 text-muted-foreground">
-            Type a Redis command and press Enter. Use ↑/↓ for history.
+            {t("Type a Redis command and press Enter. Use ↑/↓ for history.")}
           </p>
         ) : (
           entries.map((entry) => (
@@ -215,7 +217,7 @@ export function CommandConsole() {
 
         <Button size="sm" onClick={() => void run()} disabled={!session}>
           <Play className="size-3.5" />
-          Run
+          {t("Run")}
         </Button>
       </div>
     </section>

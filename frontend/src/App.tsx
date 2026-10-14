@@ -12,6 +12,7 @@ import { Resizer } from "@/components/app/Resizer";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/store/useAppStore";
 
 const ServerInfoPanel = lazy(() =>
@@ -33,38 +34,42 @@ const ConnectionDialog = lazy(() =>
 function EmptyState() {
   const openConnectionDialog = useAppStore((s) => s.openConnectionDialog);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const { t } = useI18n();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-10 text-center">
       <div className="flex size-16 items-center justify-center rounded-2xl border bg-muted/40">
         <Database className="size-8 text-muted-foreground" />
       </div>
       <div className="space-y-1">
-        <h2 className="text-lg font-semibold">No active connection</h2>
+        <h2 className="text-lg font-semibold">{t("No active connection")}</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Select a connection from the sidebar, or create a new one. SSH tunnels
-          are supported for reaching private Redis instances.
+          {t(
+            "Select a connection from the sidebar, or create a new one. SSH tunnels are supported for reaching private Redis instances.",
+          )}
         </p>
       </div>
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <Plug className="size-3.5" /> Direct / TLS
+          <Plug className="size-3.5" /> {t("Direct / TLS")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <KeyRound className="size-3.5" /> SSH tunnel
+          <KeyRound className="size-3.5" /> {t("SSH tunnel")}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Terminal className="size-3.5" /> Command console
+          <Terminal className="size-3.5" /> {t("Command console")}
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <Button onClick={() => openConnectionDialog(null)}>New connection</Button>
+        <Button onClick={() => openConnectionDialog(null)}>
+          {t("New connection")}
+        </Button>
         <Button
           variant="outline"
           className="md:hidden"
           onClick={() => setSidebarOpen(true)}
         >
           <Database className="size-3.5" />
-          Connections
+          {t("Connections")}
         </Button>
       </div>
     </div>
