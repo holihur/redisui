@@ -186,10 +186,16 @@ The Vite dev server proxies `/api` to `http://localhost:8080`.
 ### Tests
 
 ```bash
-cd backend && go test ./...
-cd frontend && pnpm run test      # vitest (key tree logic)
+cd backend && go test ./...                 # unit + integration
+cd frontend && pnpm run test                # vitest
 cd frontend && pnpm run typecheck
+cd frontend && pnpm exec playwright install chromium
+cd frontend && pnpm run e2e                  # Playwright (needs a running server)
 ```
+
+The Playwright suite expects a running RedisUI (default `http://127.0.0.1:8093`)
+with an access token in `E2E_TOKEN` and a Redis reachable at `127.0.0.1:6379`.
+See `.github/workflows/e2e.yml` for the full setup.
 
 ## Architecture
 
