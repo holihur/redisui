@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Eraser, Play, Terminal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { CommandInput, HighlightLine } from "./CommandInput";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
@@ -23,6 +24,18 @@ interface Entry {
   pending?: boolean;
 }
 
+const HISTORY_KEY = "redisui.cmdHistory";
+
+function loadHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function CommandConsole() {
   const open = useAppStore((s) => s.consoleOpen);
   const setOpen = useAppStore((s) => s.setConsoleOpen);
@@ -30,17 +43,43 @@ export function CommandConsole() {
   const activeDb = useAppStore((s) => s.activeDb);
   const databases = useAppStore((s) => s.databases);
   const afterMutation = useAppStore((s) => s.afterMutation);
+  const keys = useAppStore((s) => s.keys);
   const { t } = useI18n();
+
+  const [commands, setCommands] = useState<string[]>([]);
 
   const [input, setInput] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [history, setHistory] = useState<string[]>(loadHistory);
   const [db, setDb] = useState(activeDb);
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setDb(activeDb), [activeDb]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 100)));
+    } catch {
+      // ignore
+    }
+  }, [history]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    api
+      .commands(session.id, activeDb)
+      .then((r) => {
+        if (!cancelled) setCommands((r.commands ?? []).map((c) => c.name));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [session, activeDb]);
+
+  const keyNames = useMemo(() => keys.map((k) => k.key), [keys]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -53,8 +92,7 @@ export function CommandConsole() {
     if (!command || !session) return;
     const id = ++idRef.current;
     setEntries((e) => [...e, { id, command, db, pending: true }]);
-    setHistory((h) => [command, ...h].slice(0, 100));
-    setHistoryIndex(-1);
+    setHistory((h) => [command, ...h.filter((x) => x !== command)].slice(0, 100));
     setInput("");
     try {
       const res = await api.command(session.id, db, command);
@@ -148,7 +186,9 @@ export function CommandConsole() {
                 <span className="text-sky-600 dark:text-sky-400">
                   db{entry.db}&gt;
                 </span>
-                <span className="break-all">{entry.command}</span>
+                <span className="break-all">
+                  <HighlightLine line={entry.command} />
+                </span>
               </div>
               <pre
                 className={cn(
@@ -183,37 +223,16 @@ export function CommandConsole() {
           </SelectContent>
         </Select>
 
-        <div className="relative min-w-0 flex-1">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void run();
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                if (history.length === 0) return;
-                const next = Math.min(historyIndex + 1, history.length - 1);
-                setHistoryIndex(next);
-                setInput(history[next]);
-              } else if (e.key === "ArrowDown") {
-                e.preventDefault();
-                if (historyIndex <= 0) {
-                  setHistoryIndex(-1);
-                  setInput("");
-                  return;
-                }
-                const next = historyIndex - 1;
-                setHistoryIndex(next);
-                setInput(history[next]);
-              }
-            }}
-            placeholder="GET mykey"
-            spellCheck={false}
-            className="h-8 w-full rounded-md border bg-transparent px-2.5 font-mono text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          />
-        </div>
+        <CommandInput
+          value={input}
+          onChange={setInput}
+          onSubmit={() => void run()}
+          commands={commands}
+          keys={keyNames}
+          history={history}
+          placeholder="GET mykey"
+          disabled={!session}
+        />
 
         <Button size="sm" onClick={() => void run()} disabled={!session}>
           <Play className="size-3.5" />

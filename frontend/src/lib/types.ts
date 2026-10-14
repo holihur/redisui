@@ -301,3 +301,12 @@ export interface CommandResult {
   result?: unknown;
   error?: string;
 }
+
+export interface CommandInfo {
+  name: string;
+  arity: number;
+  firstKey: number;
+  lastKey: number;
+  step: number;
+  flags: string[];
+}

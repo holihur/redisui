@@ -1,5 +1,6 @@
 import type {
   ClientInfo,
+  CommandInfo,
   CommandResult,
   Connection,
   ConnectionInput,
@@ -259,6 +260,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+
+  commands: (sid: string, db: number) =>
+    request<{ commands: CommandInfo[] }>(
+      `/sessions/${sid}/commands${qs({ db })}`,
+    ),
 
   scriptLoad: (sid: string, db: number, script: string) =>
     request<{ ok: boolean; sha: string }>(`/sessions/${sid}/script/load`, {
