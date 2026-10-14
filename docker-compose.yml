@@ -1,0 +1,20 @@
+services:
+  redisui:
+    build: .
+    image: redisui:latest
+    container_name: redisui
+    ports:
+      - "8080:8080"
+    volumes:
+      - redisui-data:/data
+    environment:
+      # Pin the access token (otherwise one is generated into /data/token and
+      # printed to the container logs on first start).
+      # REDISUI_AUTH_TOKEN: "change-me"
+      # Pin the credential-encryption key (64 hex chars).
+      # REDISUI_MASTER_KEY: "change-me"
+      TZ: UTC
+    restart: unless-stopped
+
+volumes:
+  redisui-data:

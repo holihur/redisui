@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.vite
+backend/redisui
+backend/data
+frontend/pnpm-debug.log
+.git
+.github
+*.md

@@ -1,0 +1,6 @@
+# Toolchain versions pinned for reproducible local builds.
+# Install with `mise install`; refresh lockfile checksums with `mise lock`.
+[tools]
+go = "1.26.2"
+node = "26.8.2"
+"npm:pnpm" = "12.4.1"

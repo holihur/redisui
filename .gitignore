@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# build output
+frontend/dist/
+backend/redisui
+*.exe
+
+# runtime data & secrets
+backend/data/
+data/
+master.key
+token
+.env
+
+# editor / OS / logs
+.DS_Store
+*.log
+.vscode/
+.idea/
