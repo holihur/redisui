@@ -8,6 +8,18 @@ import (
 	"time"
 )
 
+func TestParseTarget(t *testing.T) {
+	if tg, ok := ParseTarget("127.0.0.1:6379", false); !ok || tg.Addr != "127.0.0.1:6379" || tg.TLS {
+		t.Fatalf("plain target: %+v %v", tg, ok)
+	}
+	if tg, ok := ParseTarget("rediss://redis:6380", true); !ok || tg.Addr != "redis:6380" || !tg.TLS || !tg.Insecure {
+		t.Fatalf("tls target: %+v %v", tg, ok)
+	}
+	if _, ok := ParseTarget("", false); ok {
+		t.Fatal("empty target should fail")
+	}
+}
+
 func TestProxyForwardsAndCounts(t *testing.T) {
 	// Fake upstream: reply +OK to any request.
 	up, err := net.Listen("tcp", "127.0.0.1:0")
@@ -37,7 +49,7 @@ func TestProxyForwardsAndCounts(t *testing.T) {
 		}
 	}()
 
-	p := New("127.0.0.1:0", up.Addr().String())
+	p := New("127.0.0.1:0", []Target{{Addr: up.Addr().String()}})
 	if err := p.Start(context.Background()); err != nil {
 		t.Fatalf("proxy start: %v", err)
 	}

@@ -59,11 +59,23 @@ func TestMCPInitializeAndTools(t *testing.T) {
 		t.Fatalf("unknown tool should return an error: %#v", out)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/mcp", nil)
+	// POST with Accept: text/event-stream returns an SSE frame.
+	req := httptest.NewRequest(http.MethodPost, "/api/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":9,"method":"ping"}`))
+	req.Header.Set("Accept", "text/event-stream")
 	rec := httptest.NewRecorder()
 	s.mcp(rec, req)
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("GET should be 405, got %d", rec.Code)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "event: message") {
+		t.Fatalf("SSE response: %d %q", rec.Code, rec.Body.String())
+	}
+
+	// GET opens the SSE channel; cancel immediately so it returns.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	greq := httptest.NewRequest(http.MethodGet, "/api/mcp", nil).WithContext(ctx)
+	grec := httptest.NewRecorder()
+	s.mcp(grec, greq)
+	if grec.Code != http.StatusOK || !strings.Contains(grec.Header().Get("Content-Type"), "text/event-stream") {
+		t.Fatalf("GET SSE: %d %q", grec.Code, grec.Header().Get("Content-Type"))
 	}
 }
 

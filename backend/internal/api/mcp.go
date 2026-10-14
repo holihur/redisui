@@ -47,14 +47,19 @@ type mcpTool struct {
 }
 
 func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", "POST")
-		writeErr(w, http.StatusMethodNotAllowed, errString("MCP endpoint accepts POST JSON-RPC"))
+	if r.Method == http.MethodGet {
+		s.mcpSSE(w, r)
 		return
 	}
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "GET, POST")
+		writeErr(w, http.StatusMethodNotAllowed, errString("MCP endpoint accepts POST JSON-RPC and GET SSE"))
+		return
+	}
+
 	var req rpcRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: -32700, Message: "parse error"}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", Error: &rpcError{Code: -32700, Message: "parse error"}})
 		return
 	}
 
@@ -63,7 +68,7 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 
 	switch req.Method {
 	case "initialize":
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
 			"protocolVersion": mcpProtocolVersion,
 			"capabilities": map[string]any{
 				"tools":     map[string]any{},
@@ -76,35 +81,79 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
 	case "ping":
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
 	case "tools/list":
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}})
 	case "resources/list":
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": s.mcpResources(r.Context())}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": s.mcpResources(r.Context())}})
 	case "resources/read":
 		res, rpcErr := s.mcpReadResource(r.Context(), req.Params)
 		if rpcErr != nil {
-			writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: rpcErr})
+			sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: rpcErr})
 			return
 		}
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: res})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: res})
 	case "tools/call":
 		result, rpcErr := s.mcpCall(r.Context(), req.Params)
 		if rpcErr != nil {
-			writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: rpcErr})
+			sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: rpcErr})
 			return
 		}
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: result})
 	default:
-		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{Code: -32601, Message: "method not found: " + req.Method}})
+		sendMCP(w, r, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcError{Code: -32601, Message: "method not found: " + req.Method}})
 	}
 }
 
-func writeMCP(w http.ResponseWriter, resp rpcResponse) {
+// acceptsSSE reports whether the client asked for an event stream.
+func acceptsSSE(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Accept"), "text/event-stream")
+}
+
+// sendMCP writes the response as JSON, or as an SSE frame when requested.
+func sendMCP(w http.ResponseWriter, r *http.Request, resp rpcResponse) {
+	if acceptsSSE(r) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.WriteHeader(http.StatusOK)
+		data, _ := json.Marshal(resp)
+		_, _ = fmt.Fprintf(w, "event: message\ndata: %s\n\n", data)
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		return
+	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// mcpSSE opens the optional server->client SSE channel (keepalive only).
+func (s *Server) mcpSSE(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, errString("streaming unsupported"))
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.WriteHeader(http.StatusOK)
+	_, _ = fmt.Fprint(w, ": connected\n\n")
+	flusher.Flush()
+	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			_, _ = fmt.Fprint(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
 }
 
 func toolResult(v any) map[string]any {

@@ -45,7 +45,8 @@ func main() {
 	updateAuto := flag.Bool("update-auto", true, "automatically download and apply updates when available")
 	noUpdate := flag.Bool("no-update", false, "disable the self-update checker")
 	proxyAddr := flag.String("proxy-addr", "", "optional RESP proxy listen address, e.g. 0.0.0.0:6380")
-	proxyTarget := flag.String("proxy-target", "", "Redis target for the proxy (host:port)")
+	proxyTarget := flag.String("proxy-target", "", "Redis target(s) for the proxy (host:port, redis://, rediss://; comma-separated for round-robin)")
+	proxyInsecure := flag.Bool("proxy-insecure", false, "skip TLS verification for rediss:// proxy targets")
 	oidcIssuer := flag.String("oidc-issuer", "", "OpenID Connect issuer URL")
 	oidcClientID := flag.String("oidc-client-id", "", "OpenID Connect client id")
 	oidcClientSecret := flag.String("oidc-client-secret", "", "OpenID Connect client secret")
@@ -177,11 +178,20 @@ func main() {
 	// --- optional RESP proxy -------------------------------------------------
 	var respProxy *proxy.Proxy
 	if *proxyAddr != "" && *proxyTarget != "" {
-		respProxy = proxy.New(*proxyAddr, *proxyTarget)
+		var targets []proxy.Target
+		for _, raw := range strings.Split(*proxyTarget, ",") {
+			if tgt, ok := proxy.ParseTarget(raw, *proxyInsecure); ok {
+				targets = append(targets, tgt)
+			}
+		}
+		if len(targets) == 0 {
+			log.Fatalf("no valid -proxy-target provided")
+		}
+		respProxy = proxy.New(*proxyAddr, targets)
 		if err := respProxy.Start(updateCtx); err != nil {
 			log.Fatalf("start proxy: %v", err)
 		}
-		log.Printf("RESP proxy listening on %s -> %s", *proxyAddr, *proxyTarget)
+		log.Printf("RESP proxy listening on %s -> %s", *proxyAddr, respProxy.TargetLabel())
 	} else if *proxyAddr != "" || *proxyTarget != "" {
 		log.Printf("WARNING: both -proxy-addr and -proxy-target are required to enable the proxy")
 	}

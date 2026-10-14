@@ -161,7 +161,8 @@ redis.example.com {
 | `-update-interval` | `10m` | How often to check for updates |
 | `-update-auto` | `true` | Auto-apply updates (`false` = notify only) |
 | `-no-update` | `false` | Disable the self-update checker |
-| `-proxy-addr` / `-proxy-target` | — | Enable the RESP proxy |
+| `-proxy-addr` / `-proxy-target` | — | Enable the RESP proxy (`-proxy-target` accepts `host:port`, `redis://`, `rediss://`; comma-separate for round-robin) |
+| `-proxy-insecure` | `false` | Skip TLS verification for `rediss://` proxy targets |
 | `-oidc-issuer` | — | OIDC issuer URL (enables SSO) |
 | `-oidc-client-id` / `-oidc-client-secret` | — | OIDC client credentials |
 | `-oidc-redirect-url` | — | OIDC callback URL |
@@ -262,8 +263,9 @@ browser returns to the app with a RedisUI session token.
 ## MCP server
 
 RedisUI exposes a Model Context Protocol endpoint at `POST /api/mcp`
-(JSON-RPC 2.0 over HTTP). Authenticate with a personal access token created
-under **Diagnostics → Access tokens** (scopes `read`, `write`, `admin`).
+(JSON-RPC 2.0 over HTTP, with `text/event-stream` (SSE) responses and a GET SSE
+channel). Authenticate with a personal access token created under
+**Diagnostics → Access tokens** (scopes `read`, `write`, `admin`).
 
 Tools: `list_connections`, `open_session`, `close_session`, `scan_keys`,
 `get_key`, `set_key`, `delete_key`, `run_command`, `server_info`. Write tools

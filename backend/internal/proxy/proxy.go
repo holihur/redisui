@@ -4,8 +4,11 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
+	"net/url"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,10 +58,33 @@ type conn struct {
 	last      atomic.Value // string
 }
 
-// Proxy forwards RESP traffic to a single Redis target.
+// Target is one upstream Redis endpoint.
+type Target struct {
+	Addr     string
+	TLS      bool
+	Insecure bool
+}
+
+// ParseTarget accepts "host:port", "redis://host:port" or "rediss://host:port".
+func ParseTarget(s string, insecure bool) (Target, bool) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return Target{}, false
+	}
+	if strings.Contains(s, "://") {
+		u, err := url.Parse(s)
+		if err != nil || u.Host == "" {
+			return Target{}, false
+		}
+		return Target{Addr: u.Host, TLS: u.Scheme == "rediss", Insecure: insecure}, true
+	}
+	return Target{Addr: s, Insecure: insecure}, true
+}
+
+// Proxy forwards RESP traffic to one of its upstream targets (round-robin).
 type Proxy struct {
-	addr   string
-	target string
+	addr    string
+	targets []Target
 
 	mu      sync.Mutex
 	ln      net.Listener
@@ -68,13 +94,27 @@ type Proxy struct {
 	total   int64
 	buckets []Bucket
 
+	next     atomic.Uint64
 	up       atomic.Int64
 	down     atomic.Int64
 	commands atomic.Int64
 }
 
-func New(addr, target string) *Proxy {
-	return &Proxy{addr: addr, target: target, conns: map[uint64]*conn{}}
+func New(addr string, targets []Target) *Proxy {
+	return &Proxy{addr: addr, targets: targets, conns: map[uint64]*conn{}}
+}
+
+// TargetLabel is a human-readable list of upstreams.
+func (p *Proxy) TargetLabel() string {
+	parts := make([]string, 0, len(p.targets))
+	for _, t := range p.targets {
+		if t.TLS {
+			parts = append(parts, "rediss://"+t.Addr)
+		} else {
+			parts = append(parts, t.Addr)
+		}
+	}
+	return strings.Join(parts, ", ")
 }
 
 // Start begins listening. It returns once the listener is bound.
@@ -107,7 +147,8 @@ func (p *Proxy) acceptLoop(ln net.Listener) {
 
 func (p *Proxy) handle(client net.Conn) {
 	defer client.Close()
-	upstream, err := net.DialTimeout("tcp", p.target, 10*time.Second)
+	target := p.pickTarget()
+	upstream, err := p.dial(target)
 	if err != nil {
 		return
 	}
@@ -161,6 +202,32 @@ func (p *Proxy) handle(client net.Conn) {
 	}()
 
 	<-done
+}
+
+func (p *Proxy) pickTarget() Target {
+	if len(p.targets) == 0 {
+		return Target{}
+	}
+	i := p.next.Add(1) - 1
+	return p.targets[int(i)%len(p.targets)]
+}
+
+func (p *Proxy) dial(t Target) (net.Conn, error) {
+	d := &net.Dialer{Timeout: 10 * time.Second}
+	if !t.TLS {
+		return d.Dial("tcp", t.Addr)
+	}
+	conn, err := d.Dial("tcp", t.Addr)
+	if err != nil {
+		return nil, err
+	}
+	host, _, _ := net.SplitHostPort(t.Addr)
+	tc := tls.Client(conn, &tls.Config{ServerName: host, InsecureSkipVerify: t.Insecure})
+	if err := tc.Handshake(); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return tc, nil
 }
 
 func (p *Proxy) open(remote string) *conn {
@@ -240,7 +307,7 @@ func (p *Proxy) Snapshot() Snapshot {
 	return Snapshot{
 		Running:  true,
 		Addr:     addr,
-		Target:   p.target,
+		Target:   p.TargetLabel(),
 		Active:   len(conns),
 		Total:    total,
 		Up:       p.up.Load(),
