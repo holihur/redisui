@@ -212,7 +212,8 @@ export type ToolKey =
   | "pubsub"
   | "monitor"
   | "search"
-  | "users";
+  | "users"
+  | "about";
 
 export type UserRole = "admin" | "operator" | "viewer";
 
@@ -230,6 +231,20 @@ export interface LoginResult {
   role: UserRole;
   connections: string[];
   expiresAt: string;
+}
+
+export interface UpdateStatus {
+  enabled: boolean;
+  current: string;
+  latest: string;
+  updateAvailable: boolean;
+  publishedAt?: string;
+  notes?: string;
+  assetUrl?: string;
+  checkedAt?: string;
+  lastError?: string;
+  autoApply: boolean;
+  intervalSeconds: number;
 }
 
 export interface Mutation {

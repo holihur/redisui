@@ -53,22 +53,61 @@ token-based remote access.
 > For Sentinel, provide the master name and one or more sentinel addresses.
 > For Cluster, provide one or more seed node addresses.
 
-## Quick start
+## Install (one command)
 
-Build the frontend and backend, then run the single binary:
+Builds are published as self-contained binaries (the frontend is embedded), so
+there is no separate web directory to manage.
 
 ```bash
-# frontend
-cd frontend && pnpm install && pnpm run build
+# install the latest release into /usr/local/bin
+curl -fsSL https://raw.githubusercontent.com/holihur/redisui/master/install.sh | sh
 
-# backend
-cd ../backend && go build -o redisui .
-./redisui -addr 0.0.0.0:8080 -data ./data -static ../frontend/dist
+# or install and enable a systemd service (binds 0.0.0.0:8080, data in /var/lib/redisui)
+sh install.sh --systemd
+
+# pin a version / disable self-update
+sh install.sh --version v0.1.0
+sh install.sh --systemd --no-update
+```
+
+`install.sh` detects OS/arch, downloads the matching release, verifies the
+sha256 checksum, installs the binary and (with `--systemd`) sets up a unit. The
+generated access token is stored in `<data-dir>/token` and printed on first run.
+
+Build from source (Go + pnpm):
+
+```bash
+VERSION=v0.1.0 bash scripts/build.sh   # -> ./redisui with embedded frontend
+```
+
+## Quick start
+
+Run the single binary:
+
+```bash
+./redisui -addr 0.0.0.0:8080 -data ./data
 ```
 
 On first run the server prints an **access token** and stores it in
-`data/token`. Open `http://<host>:8080/`, paste the token, and connect a Redis
-server.
+`data/token`. Open `http://<host>:8080/`, paste the token (or sign in as a
+user), and connect a Redis server. To serve an external frontend build instead
+of the embedded one, pass `-static /path/to/dist`.
+
+## Updates
+
+RedisUI can update itself from GitHub releases. By default it checks every
+**10 minutes** and applies a newer release automatically, then restarts:
+
+```bash
+redisui                            # check every 10m, auto-apply
+redisui -update-interval 1h        # check hourly
+redisui -no-update                 # disable checking entirely
+redisui -update-auto=false         # check but never auto-apply
+redisui -update-repo owner/name    # use a fork
+```
+
+Admins can also check/apply manually under **Diagnostics → About & updates**.
+Self-update never runs for development builds (`-version` reports `dev`).
 
 ## Remote access
 
@@ -96,13 +135,18 @@ redis.example.com {
 | --- | --- | --- |
 | `-addr` | `0.0.0.0:8080` | HTTP listen address |
 | `-data` | `./data` | Directory for profiles, master key and token |
-| `-static` | `./web` | Directory of the built frontend |
+| `-static` | _(embedded)_ | Serve an external frontend build instead |
 | `-auth-token` | _(generated)_ | Access token for remote clients |
 | `-readonly-token` | — | Read-only access token (GET/open only) |
 | `-no-auth` | `false` | Disable authentication |
 | `-tls-cert` / `-tls-key` | — | Enable HTTPS |
 | `-cors-origin` | _(same-origin)_ | Optional CORS origin |
 | `-trust-proxy` | `false` | Trust `X-Forwarded-For`/`X-Real-IP` |
+| `-update-repo` | `holihur/redisui` | GitHub repo for self-update |
+| `-update-interval` | `10m` | How often to check for updates |
+| `-update-auto` | `true` | Auto-apply updates (`false` = notify only) |
+| `-no-update` | `false` | Disable the self-update checker |
+| `-version` | — | Print version and exit |
 
 Environment variables:
 

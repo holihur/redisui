@@ -1,6 +1,7 @@
 import {
   Activity,
   Database,
+  Download,
   Info,
   Menu,
   Moon,
@@ -49,6 +50,7 @@ export function AppHeader() {
   const username = useAppStore((s) => s.username);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const updateStatus = useAppStore((s) => s.updateStatus);
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-sidebar px-2 sm:px-3">
@@ -165,8 +167,12 @@ export function AppHeader() {
               size="icon"
               disabled={!session}
               title="Diagnostics"
+              className="relative"
             >
               <Wrench className="size-4" />
+              {updateStatus?.updateAvailable ? (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-emerald-500" />
+              ) : null}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
@@ -204,6 +210,19 @@ export function AppHeader() {
                 </DropdownMenuItem>
               </>
             ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setActiveTool("about")}>
+              <Download className="size-4" />
+              About & updates
+              {updateStatus?.updateAvailable ? (
+                <Badge
+                  variant="secondary"
+                  className="ml-auto text-[10px] text-emerald-600 dark:text-emerald-400"
+                >
+                  new
+                </Badge>
+              ) : null}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

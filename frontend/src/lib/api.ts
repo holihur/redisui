@@ -20,6 +20,7 @@ import type {
   ServerInfo,
   SessionInfo,
   SlowlogEntry,
+  UpdateStatus,
 } from "./types";
 
 const BASE = "/api";
@@ -147,6 +148,18 @@ export const api = {
     request<{ ok: boolean }>(`/users/${encodeURIComponent(username)}`, {
       method: "DELETE",
     }),
+
+  updateStatus: () => request<UpdateStatus>("/update"),
+  updateCheck: () =>
+    request<{ ok: boolean; error?: string; status: UpdateStatus }>(
+      "/update/check",
+      { method: "POST" },
+    ),
+  updateApply: () =>
+    request<{ ok: boolean; error?: string; status: UpdateStatus }>(
+      "/update/apply",
+      { method: "POST" },
+    ),
 
   listConnections: () => request<Connection[]>("/connections"),
   getConnection: (id: string) => request<Connection>(`/connections/${id}`),

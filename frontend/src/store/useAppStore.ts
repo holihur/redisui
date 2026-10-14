@@ -9,7 +9,7 @@ import type {
   SessionInfo,
 } from "@/lib/types";
 import type { RedisTypeFilter } from "@/lib/format";
-import type { ToolKey, UserRole } from "@/lib/types";
+import type { ToolKey, UpdateStatus, UserRole } from "@/lib/types";
 
 interface AppState {
   connections: Connection[];
@@ -41,6 +41,7 @@ interface AppState {
   role: UserRole;
   username: string;
   allowedConnections: string[];
+  updateStatus: UpdateStatus | null;
   sidebarCollapsed: boolean;
   sidebarWidth: number;
   detailWidth: number;
@@ -67,6 +68,7 @@ interface AppState {
   setServerInfoOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setActiveTool: (tool: ToolKey | null) => void;
+  setUpdateStatus: (s: UpdateStatus | null) => void;
   setPrincipal: (p: {
     username: string;
     role: UserRole;
@@ -137,6 +139,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   role: "admin",
   username: "",
   allowedConnections: [],
+  updateStatus: null,
   sidebarCollapsed: lsGet("redisui.sidebarCollapsed") === "1",
   sidebarWidth: loadNum("redisui.sidebarWidth", 288, SIDEBAR_MIN, SIDEBAR_MAX),
   detailWidth: loadNum("redisui.detailWidth", 512, DETAIL_MIN, DETAIL_MAX),
@@ -357,6 +360,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTool(tool: ToolKey | null) {
     set({ activeTool: tool });
+  },
+
+  setUpdateStatus(s: UpdateStatus | null) {
+    set({ updateStatus: s });
   },
 
   setPrincipal(p: { username: string; role: UserRole; connections: string[] }) {

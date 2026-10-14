@@ -38,6 +38,7 @@ import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 import { StringValue } from "./detail/StringValue";
 import { JsonValue } from "./detail/JsonValue";
+import { JsonHighlight } from "./detail/JsonHighlight";
 import { HashValue } from "./detail/HashValue";
 import { ListValue } from "./detail/ListValue";
 import { SetValue } from "./detail/SetValue";
@@ -156,9 +157,7 @@ export function KeyDetail() {
         return <StreamValue {...props} />;
       default:
         return (
-          <pre className="scrollbar-thin flex-1 overflow-auto p-3 font-mono text-xs">
-            {JSON.stringify(detail.value, null, 2)}
-          </pre>
+          <JsonHighlight value={JSON.stringify(detail.value, null, 2) ?? ""} />
         );
     }
   };

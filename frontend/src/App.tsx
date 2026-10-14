@@ -11,6 +11,7 @@ import { CommandConsole } from "@/components/app/CommandConsole";
 import { Resizer } from "@/components/app/Resizer";
 import { useIsDesktop } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 import { useAppStore } from "@/store/useAppStore";
 
 const ServerInfoPanel = lazy(() =>
@@ -80,11 +81,30 @@ export default function App() {
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const adjustSidebarWidth = useAppStore((s) => s.adjustSidebarWidth);
   const adjustDetailWidth = useAppStore((s) => s.adjustDetailWidth);
+  const setUpdateStatus = useAppStore((s) => s.setUpdateStatus);
   const isDesktop = useIsDesktop();
 
   useEffect(() => {
     void loadConnections();
   }, [loadConnections]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      api
+        .updateStatus()
+        .then((s) => {
+          if (!cancelled) setUpdateStatus(s);
+        })
+        .catch(() => {});
+    };
+    void load();
+    const id = window.setInterval(load, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [setUpdateStatus]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

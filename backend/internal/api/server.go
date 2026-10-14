@@ -3,10 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"redisui/internal/account"
 	"redisui/internal/session"
 	"redisui/internal/store"
+	"redisui/internal/update"
 )
 
 // Server holds the API dependencies.
@@ -26,6 +27,7 @@ type Server struct {
 	readOnlyToken string
 	limiter       *authLimiter
 	trustProxy    bool
+	updater       *update.Updater
 }
 
 // Options configures the HTTP server.
@@ -36,6 +38,11 @@ type Options struct {
 	ReadOnlyToken string
 	// Accounts enables multi-user login when non-nil.
 	Accounts *account.Store
+	// StaticFS serves the frontend (embedded or os.DirFS). When nil, only the
+	// API is served.
+	StaticFS fs.FS
+	// Update reports self-update status when non-nil.
+	Update *update.Updater
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -43,7 +50,7 @@ type Options struct {
 }
 
 // New builds the HTTP handler (API + SPA static files).
-func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) http.Handler {
+func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	s := &Server{
 		store:         st,
 		sessions:      mgr,
@@ -53,6 +60,7 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 		readOnlyToken: opts.ReadOnlyToken,
 		limiter:       newAuthLimiter(),
 		trustProxy:    opts.TrustProxy,
+		updater:       opts.Update,
 	}
 
 	mux := http.NewServeMux()
@@ -67,6 +75,10 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("POST /api/users", s.createUser)
 	mux.HandleFunc("PUT /api/users/{username}", s.updateUser)
 	mux.HandleFunc("DELETE /api/users/{username}", s.deleteUser)
+
+	mux.HandleFunc("GET /api/update", s.updateStatus)
+	mux.HandleFunc("POST /api/update/check", s.updateCheck)
+	mux.HandleFunc("POST /api/update/apply", s.updateApply)
 
 	mux.HandleFunc("GET /api/connections", s.listConnections)
 	mux.HandleFunc("POST /api/connections", s.createConnection)
@@ -103,10 +115,8 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("DELETE /api/sessions/{sid}/search/index", s.dropIndex)
 	mux.HandleFunc("GET /api/sessions/{sid}/search", s.search)
 
-	if staticDir != "" {
-		if _, err := os.Stat(staticDir); err == nil {
-			mux.Handle("/", spaHandler(staticDir))
-		}
+	if opts.StaticFS != nil {
+		mux.Handle("/", spaHandler(opts.StaticFS))
 	}
 
 	return withRecovery(withLogging(withCORS(opts.CORSOrigin, s.withAuth(mux))))
@@ -194,17 +204,26 @@ func withRecovery(next http.Handler) http.Handler {
 	})
 }
 
-func spaHandler(dir string) http.Handler {
-	fs := http.FileServer(http.Dir(dir))
+func spaHandler(fsys fs.FS) http.Handler {
+	fileServer := http.FileServer(http.FS(fsys))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clean := filepath.Clean(r.URL.Path)
-		path := filepath.Join(dir, clean)
-		if info, err := os.Stat(path); err == nil && !info.IsDir() {
-			fs.ServeHTTP(w, r)
+		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		if name == "" {
+			name = "index.html"
+		}
+		if info, err := fs.Stat(fsys, name); err == nil && !info.IsDir() {
+			fileServer.ServeHTTP(w, r)
 			return
 		}
-		// SPA fallback.
-		http.ServeFile(w, r, filepath.Join(dir, "index.html"))
+		// SPA fallback: serve index.html for client-side routes.
+		index, err := fs.ReadFile(fsys, "index.html")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		_, _ = w.Write(index)
 	})
 }
 

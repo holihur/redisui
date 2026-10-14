@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -18,12 +20,16 @@ import (
 	"redisui/internal/secret"
 	"redisui/internal/session"
 	"redisui/internal/store"
+	"redisui/internal/update"
 )
+
+// version is injected at build time with -ldflags "-X main.version=...".
+var version = "dev"
 
 func main() {
 	addr := flag.String("addr", "0.0.0.0:8080", "HTTP listen address; use 127.0.0.1:8080 to restrict to this host")
 	dataDir := flag.String("data", "./data", "directory for persisted connection profiles and keys")
-	staticDir := flag.String("static", "./web", "directory containing the built frontend")
+	staticDir := flag.String("static", "", "directory containing the built frontend (default: embedded)")
 	authToken := flag.String("auth-token", "", "access token for remote clients (default: REDISUI_AUTH_TOKEN env, then a generated token in <data>/token)")
 	noAuth := flag.Bool("no-auth", false, "disable authentication (only safe on a trusted, non-public network)")
 	readOnlyToken := flag.String("readonly-token", "", "read-only access token: GET requests and open-session only")
@@ -31,7 +37,18 @@ func main() {
 	tlsKey := flag.String("tls-key", "", "TLS private key file")
 	corsOrigin := flag.String("cors-origin", "", "allowed CORS origin; empty keeps the API same-origin only")
 	trustProxy := flag.Bool("trust-proxy", false, "trust X-Forwarded-For/X-Real-IP from a reverse proxy")
+	updateRepo := flag.String("update-repo", "holihur/redisui", "GitHub repo (owner/name) used for self-update")
+	updateInterval := flag.Duration("update-interval", 10*time.Minute, "how often to check for updates")
+	updateAuto := flag.Bool("update-auto", true, "automatically download and apply updates when available")
+	noUpdate := flag.Bool("no-update", false, "disable the self-update checker")
+	printVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *printVersion {
+		fmt.Println(version)
+		return
+	}
+	log.Printf("redisui %s", version)
 
 	// --- secrets at rest ---------------------------------------------------
 	key, keySource, err := secret.ResolveKey(*dataDir)
@@ -108,17 +125,46 @@ func main() {
 		log.Fatalf("open store: %v", err)
 	}
 
+	staticFS, staticDesc := resolveStatic(*staticDir)
+
 	mgr := session.NewManager()
 	defer mgr.CloseAll()
 
+	// --- self-update -------------------------------------------------------
+	updateCtx, cancelUpdates := context.WithCancel(context.Background())
+	defer cancelUpdates()
+	var updater *update.Updater
+	if !*noUpdate {
+		updater = update.New(update.Config{
+			Repo:      *updateRepo,
+			Current:   version,
+			Interval:  *updateInterval,
+			Enabled:   true,
+			AutoApply: *updateAuto && version != "dev",
+			Restart:   restartSelf,
+			Logf:      log.Printf,
+		})
+		go updater.Start(updateCtx)
+	} else {
+		log.Printf("self-update disabled (-no-update)")
+	}
+
 	srv := &http.Server{
-		Addr:              *addr,
-		Handler:           api.New(st, mgr, *staticDir, api.Options{AuthToken: token, ReadOnlyToken: roToken, Accounts: accounts, CORSOrigin: *corsOrigin, TrustProxy: *trustProxy}),
+		Addr: *addr,
+		Handler: api.New(st, mgr, api.Options{
+			AuthToken:     token,
+			ReadOnlyToken: roToken,
+			Accounts:      accounts,
+			StaticFS:      staticFS,
+			Update:        updater,
+			CORSOrigin:    *corsOrigin,
+			TrustProxy:    *trustProxy,
+		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
-		log.Printf("redisui listening on %s (data=%s static=%s auth=%v tls=%v)", *addr, *dataDir, *staticDir, requireAuth, *tlsCert != "")
+		log.Printf("redisui listening on %s (data=%s static=%s auth=%v tls=%v)", *addr, *dataDir, staticDesc, requireAuth, *tlsCert != "")
 		var serveErr error
 		if *tlsCert != "" {
 			serveErr = srv.ListenAndServeTLS(*tlsCert, *tlsKey)
@@ -135,12 +181,44 @@ func main() {
 	<-stop
 
 	log.Println("shutting down…")
+	cancelUpdates()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Printf("shutdown: %v", err)
 	}
 	mgr.CloseAll()
+}
+
+// resolveStatic picks the frontend filesystem: an explicit directory when it
+// exists, otherwise the assets embedded in the binary.
+func resolveStatic(dir string) (fs.FS, string) {
+	if dir != "" {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return os.DirFS(dir), dir
+		}
+		log.Printf("WARNING: static dir %q not found; falling back to embedded assets", dir)
+	}
+	if sub, ok := embeddedStatic(); ok {
+		return sub, "embedded"
+	}
+	return nil, "none"
+}
+
+// restartSelf replaces the current process image with the (possibly updated)
+// binary at the same path and arguments.
+func restartSelf() error {
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	// Let the HTTP response flush before we swap the process.
+	time.Sleep(500 * time.Millisecond)
+	if err := syscall.Exec(exe, os.Args, os.Environ()); err != nil {
+		log.Printf("exec restart failed (%v); exiting so a supervisor can restart", err)
+		os.Exit(0)
+	}
+	return nil
 }
 
 // loadOrCreateToken reuses a previously generated token so clients keep working
