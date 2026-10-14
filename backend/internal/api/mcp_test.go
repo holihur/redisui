@@ -1,11 +1,18 @@
 package api
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"redisui/internal/model"
+	"redisui/internal/secret"
+	"redisui/internal/store"
 )
 
 func TestMCPInitializeAndTools(t *testing.T) {
@@ -57,6 +64,34 @@ func TestMCPInitializeAndTools(t *testing.T) {
 	s.mcp(rec, req)
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("GET should be 405, got %d", rec.Code)
+	}
+}
+
+func TestMCPResources(t *testing.T) {
+	cipher, _ := secret.New(bytes.Repeat([]byte{1}, 32))
+	st, err := store.New(filepath.Join(t.TempDir(), "c.json"), cipher)
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	if _, err := st.Create(model.Connection{ID: "c1", Name: "local", Host: "127.0.0.1", Port: 6379}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	s := &Server{store: st}
+
+	res := s.mcpResources(context.Background())
+	if len(res) != 1 || res[0]["uri"] != "redisui://connection/c1" {
+		t.Fatalf("resources = %#v", res)
+	}
+
+	out, rpcErr := s.mcpReadResource(context.Background(), json.RawMessage(`{"uri":"redisui://connection/c1"}`))
+	if rpcErr != nil {
+		t.Fatalf("read: %v", rpcErr)
+	}
+	if out == nil {
+		t.Fatal("expected contents")
+	}
+	if _, rpcErr := s.mcpReadResource(context.Background(), json.RawMessage(`{"uri":"bad"}`)); rpcErr == nil {
+		t.Fatal("bad uri should error")
 	}
 }
 

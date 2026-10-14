@@ -65,8 +65,11 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 	case "initialize":
 		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{
 			"protocolVersion": mcpProtocolVersion,
-			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "redisui", "version": "1"},
+			"capabilities": map[string]any{
+				"tools":     map[string]any{},
+				"resources": map[string]any{},
+			},
+			"serverInfo": map[string]any{"name": "redisui", "version": "1"},
 		}})
 	case "notifications/initialized", "initialized":
 		if isNotification {
@@ -78,6 +81,15 @@ func (s *Server) mcp(w http.ResponseWriter, r *http.Request) {
 		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{}})
 	case "tools/list":
 		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"tools": mcpTools()}})
+	case "resources/list":
+		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: map[string]any{"resources": s.mcpResources(r.Context())}})
+	case "resources/read":
+		res, rpcErr := s.mcpReadResource(r.Context(), req.Params)
+		if rpcErr != nil {
+			writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: rpcErr})
+			return
+		}
+		writeMCP(w, rpcResponse{JSONRPC: "2.0", ID: req.ID, Result: res})
 	case "tools/call":
 		result, rpcErr := s.mcpCall(r.Context(), req.Params)
 		if rpcErr != nil {
@@ -368,6 +380,49 @@ func (s *Server) mcpCall(ctx context.Context, params json.RawMessage) (any, *rpc
 	}
 
 	return nil, &rpcError{Code: -32602, Message: "unknown tool: " + call.Name}
+}
+
+func (s *Server) mcpResources(ctx context.Context) []map[string]any {
+	p := principalFromContext(ctx)
+	out := []map[string]any{}
+	for _, c := range s.store.List() {
+		if !p.allows(c.ID) {
+			continue
+		}
+		pub := c.Public()
+		out = append(out, map[string]any{
+			"uri":         "redisui://connection/" + pub.ID,
+			"name":        pub.Name,
+			"description": fmt.Sprintf("%s:%d mode=%s db=%d", pub.Host, pub.Port, pub.Mode, pub.DB),
+			"mimeType":    "application/json",
+		})
+	}
+	return out
+}
+
+func (s *Server) mcpReadResource(ctx context.Context, params json.RawMessage) (any, *rpcError) {
+	var req struct {
+		URI string `json:"uri"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return nil, &rpcError{Code: -32602, Message: "invalid params"}
+	}
+	id := strings.TrimPrefix(req.URI, "redisui://connection/")
+	if id == "" || id == req.URI {
+		return nil, &rpcError{Code: -32602, Message: "unsupported resource uri"}
+	}
+	p := principalFromContext(ctx)
+	c, err := s.store.Get(id)
+	if err != nil {
+		return nil, &rpcError{Code: -32002, Message: "connection not found"}
+	}
+	if !p.allows(c.ID) {
+		return nil, &rpcError{Code: -32003, Message: "not allowed to access this connection"}
+	}
+	b, _ := json.MarshalIndent(c.Public(), "", "  ")
+	return map[string]any{"contents": []map[string]any{{
+		"uri": req.URI, "mimeType": "application/json", "text": string(b),
+	}}}, nil
 }
 
 func (s *Server) mcpSession(args map[string]any, p principal) (*redisclient.Session, error) {
