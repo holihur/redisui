@@ -146,6 +146,9 @@ func (s *Store) encryptConn(c model.Connection) (model.Connection, error) {
 		return c, err
 	}
 	c.Password = enc
+	if c.SentinelPassword, err = s.cipher.Encrypt(c.SentinelPassword); err != nil {
+		return c, err
+	}
 	if c.SSH != nil {
 		ssh := *c.SSH
 		if ssh.Password, err = s.cipher.Encrypt(ssh.Password); err != nil {
@@ -166,6 +169,9 @@ func (s *Store) encryptConn(c model.Connection) (model.Connection, error) {
 func (s *Store) decryptConn(c *model.Connection) error {
 	var err error
 	if c.Password, err = s.cipher.Decrypt(c.Password); err != nil {
+		return err
+	}
+	if c.SentinelPassword, err = s.cipher.Decrypt(c.SentinelPassword); err != nil {
 		return err
 	}
 	if c.SSH != nil {

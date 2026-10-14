@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"redisui/internal/model"
 )
 
 var ErrKeyNotFound = errors.New("key not found")
@@ -52,6 +54,9 @@ type KeyDetail struct {
 
 // ScanKeys performs a cursor-based SCAN (optionally filtered by type).
 func (s *Session) ScanKeys(ctx context.Context, db int, cursor uint64, match string, count int64, typeFilter string, withSize bool) ([]KeyInfo, uint64, error) {
+	if s.info.EffectiveMode() == model.ModeCluster {
+		return s.scanCluster(ctx, match, count, withSize)
+	}
 	cli := s.client(db)
 	if match == "" {
 		match = "*"
@@ -81,11 +86,16 @@ func (s *Session) ScanKeys(ctx context.Context, db int, cursor uint64, match str
 		}
 	}
 
+	infos := s.enrichKeys(ctx, cli, keys, withSize)
+	return infos, next, nil
+}
+
+// enrichKeys pipelines TTL/TYPE (and optional MEMORY USAGE) for a key list.
+func (s *Session) enrichKeys(ctx context.Context, cli redis.UniversalClient, keys []string, withSize bool) []KeyInfo {
 	infos := make([]KeyInfo, len(keys))
 	if len(keys) == 0 {
-		return infos, next, nil
+		return infos
 	}
-
 	pipe := cli.Pipeline()
 	ttlCmds := make([]*redis.DurationCmd, len(keys))
 	typeCmds := make([]*redis.StatusCmd, len(keys))
@@ -115,7 +125,49 @@ func (s *Session) ScanKeys(ctx context.Context, db int, cursor uint64, match str
 		}
 		infos[i] = info
 	}
-	return infos, next, nil
+	return infos
+}
+
+// scanCluster aggregates a bounded key sample across all cluster masters.
+// Cluster-wide cursor pagination is not supported; the returned cursor is
+// always 0 so callers treat the page as complete.
+func (s *Session) scanCluster(ctx context.Context, match string, count int64, withSize bool) ([]KeyInfo, uint64, error) {
+	if match == "" {
+		match = "*"
+	}
+	if count <= 0 {
+		count = 100
+	}
+	cc, ok := s.client(0).(*redis.ClusterClient)
+	if !ok {
+		return []KeyInfo{}, 0, nil
+	}
+	seen := map[string]struct{}{}
+	keys := []string{}
+	_ = cc.ForEachMaster(ctx, func(ctx context.Context, node *redis.Client) error {
+		if int64(len(keys)) >= count {
+			return nil
+		}
+		var cursor uint64
+		for {
+			batch, next, err := node.Scan(ctx, cursor, match, count).Result()
+			if err != nil {
+				return nil // skip an unreachable node
+			}
+			for _, k := range batch {
+				if _, dup := seen[k]; !dup {
+					seen[k] = struct{}{}
+					keys = append(keys, k)
+				}
+			}
+			cursor = next
+			if cursor == 0 || int64(len(keys)) >= count {
+				break
+			}
+		}
+		return nil
+	})
+	return s.enrichKeys(ctx, s.client(0), keys, withSize), 0, nil
 }
 
 // GetKey loads a page of a key's value.

@@ -75,6 +75,7 @@ func New(st *store.Store, mgr *session.Manager, staticDir string, opts Options) 
 	mux.HandleFunc("GET /api/sessions/{sid}/export", s.exportKeys)
 	mux.HandleFunc("POST /api/sessions/{sid}/import", s.importKeys)
 	mux.HandleFunc("GET /api/sessions/{sid}/pubsub", s.pubsub)
+	mux.HandleFunc("GET /api/sessions/{sid}/monitor", s.monitor)
 
 	if staticDir != "" {
 		if _, err := os.Stat(staticDir); err == nil {

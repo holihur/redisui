@@ -234,6 +234,10 @@ export const api = {
       patterns: patterns.join(","),
       token: getAuthToken(),
     })}`,
+
+  /** EventSource URL for the MONITOR profiler (token via query string). */
+  monitorUrl: (sid: string, db: number) =>
+    `${BASE}/sessions/${sid}/monitor${qs({ db, token: getAuthToken() })}`,
 };
 
 export { ApiError };

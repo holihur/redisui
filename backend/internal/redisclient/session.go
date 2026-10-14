@@ -29,7 +29,7 @@ type Session struct {
 	CreatedAt time.Time
 
 	mu      sync.Mutex
-	clients map[int]*redis.Client
+	clients map[int]redis.UniversalClient
 	closed  bool
 }
 
@@ -41,7 +41,7 @@ func Connect(ctx context.Context, id string, info model.Connection) (*Session, e
 		ConnID:    info.ID,
 		Name:      info.Name,
 		info:      info,
-		clients:   map[int]*redis.Client{},
+		clients:   map[int]redis.UniversalClient{},
 		CreatedAt: time.Now().UTC(),
 	}
 	if info.SSH != nil && info.SSH.Enabled {
@@ -67,34 +67,81 @@ func TestConnection(ctx context.Context, info model.Connection) error {
 	return s.Close()
 }
 
-func (s *Session) client(db int) *redis.Client {
+func (s *Session) client(db int) redis.UniversalClient {
+	// Cluster mode has no logical databases; everything lives in db 0.
+	if s.info.EffectiveMode() == model.ModeCluster {
+		db = 0
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if c, ok := s.clients[db]; ok {
 		return c
 	}
-	opts := &redis.Options{
-		Addr:         net.JoinHostPort(s.info.Host, strconv.Itoa(s.info.Port)),
-		Username:     s.info.Username,
-		Password:     s.info.Password,
-		DB:           db,
-		DialTimeout:  10 * time.Second,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		PoolSize:     10,
-	}
-	if s.info.TLS {
-		opts.TLSConfig = &tls.Config{
-			InsecureSkipVerify: !s.info.TLSVerify,
-			ServerName:         s.info.Host,
-		}
-	}
-	if s.dialer != nil {
-		opts.Dialer = s.dialer.Dial
-	}
-	c := redis.NewClient(opts)
+	c := s.newClient(db)
 	s.clients[db] = c
 	return c
+}
+
+func (s *Session) tlsConfig() *tls.Config {
+	if !s.info.TLS {
+		return nil
+	}
+	return &tls.Config{
+		InsecureSkipVerify: !s.info.TLSVerify,
+		ServerName:         s.info.Host,
+	}
+}
+
+func (s *Session) newClient(db int) redis.UniversalClient {
+	var dial func(ctx context.Context, network, addr string) (net.Conn, error)
+	if s.dialer != nil {
+		dial = s.dialer.Dial
+	}
+	tlsCfg := s.tlsConfig()
+
+	switch s.info.EffectiveMode() {
+	case model.ModeCluster:
+		return redis.NewClusterClient(&redis.ClusterOptions{
+			Addrs:        s.info.ClusterAddrs,
+			Username:     s.info.Username,
+			Password:     s.info.Password,
+			TLSConfig:    tlsCfg,
+			Dialer:       dial,
+			DialTimeout:  10 * time.Second,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 30 * time.Second,
+			PoolSize:     10,
+		})
+	case model.ModeSentinel:
+		return redis.NewFailoverClient(&redis.FailoverOptions{
+			MasterName:       s.info.MasterName,
+			SentinelAddrs:    s.info.Sentinels,
+			Username:         s.info.Username,
+			Password:         s.info.Password,
+			SentinelUsername: s.info.SentinelUsername,
+			SentinelPassword: s.info.SentinelPassword,
+			DB:               db,
+			TLSConfig:        tlsCfg,
+			Dialer:           dial,
+			DialTimeout:      10 * time.Second,
+			ReadTimeout:      30 * time.Second,
+			WriteTimeout:     30 * time.Second,
+			PoolSize:         10,
+		})
+	default:
+		return redis.NewClient(&redis.Options{
+			Addr:         net.JoinHostPort(s.info.Host, strconv.Itoa(s.info.Port)),
+			Username:     s.info.Username,
+			Password:     s.info.Password,
+			DB:           db,
+			TLSConfig:    tlsCfg,
+			Dialer:       dial,
+			DialTimeout:  10 * time.Second,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 30 * time.Second,
+			PoolSize:     10,
+		})
+	}
 }
 
 func (s *Session) Close() error {
@@ -107,7 +154,7 @@ func (s *Session) Close() error {
 	for _, c := range s.clients {
 		_ = c.Close()
 	}
-	s.clients = map[int]*redis.Client{}
+	s.clients = map[int]redis.UniversalClient{}
 	if s.dialer != nil {
 		return s.dialer.Close()
 	}
@@ -121,6 +168,7 @@ func (s *Session) Info() map[string]any {
 		"id":        s.ID,
 		"connId":    s.ConnID,
 		"name":      s.Name,
+		"mode":      string(s.info.EffectiveMode()),
 		"host":      s.info.Host,
 		"port":      s.info.Port,
 		"db":        s.info.DB,
@@ -143,6 +191,12 @@ type DatabaseInfo struct {
 
 // Databases returns the list of logical databases and their key counts.
 func (s *Session) Databases(ctx context.Context, db int) ([]DatabaseInfo, error) {
+	// Cluster mode exposes a single logical database.
+	if s.info.EffectiveMode() == model.ModeCluster {
+		keys, _ := s.client(0).DBSize(ctx).Result()
+		return []DatabaseInfo{{Index: 0, Keys: keys, Used: keys > 0}}, nil
+	}
+
 	cli := s.client(db)
 
 	count := int64(16)

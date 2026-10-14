@@ -242,3 +242,56 @@ func jsonStringSlice(v []string) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }
+
+// ---------------------------------------------------------------------------
+// MONITOR (Server-Sent Events) profiler
+// ---------------------------------------------------------------------------
+
+func (s *Server) monitor(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.session(w, r)
+	if !ok {
+		return
+	}
+	stream, err := sess.Monitor(r.Context(), queryInt(r, "db", 0))
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	defer stream.Close()
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, errString("streaming unsupported"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+	fmt.Fprint(w, "event: ready\ndata: {}\n\n")
+	flusher.Flush()
+
+	// Unblock Next() when the client goes away.
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-r.Context().Done():
+			_ = stream.Close()
+		case <-done:
+		}
+	}()
+	defer close(done)
+
+	for {
+		line, err := stream.Next()
+		if err != nil {
+			return
+		}
+		data, _ := json.Marshal(map[string]any{"line": line, "at": time.Now().UnixMilli()})
+		fmt.Fprintf(w, "event: message\ndata: %s\n\n", data)
+		flusher.Flush()
+	}
+}

@@ -21,6 +21,12 @@ token-based remote access.
 - Memory analysis: `INFO memory`, `MEMORY DOCTOR`, largest sampled keys
 - Connected clients (`CLIENT LIST`)
 - Pub/Sub monitor with live streaming and publish (`SSE`)
+- Profiler: live `MONITOR` command stream (`SSE`)
+
+**Connectivity**
+- Direct, Sentinel (master name + sentinel auth) and Cluster modes
+- SSH jump host with optional pinned host-key fingerprint
+- Optional TLS to Redis (with certificate verification)
 
 **Bulk & portability**
 - Delete keys by pattern (with type-to-confirm)
@@ -32,6 +38,9 @@ token-based remote access.
   with AES-256-GCM
 - Optional native TLS (`-tls-cert`/`-tls-key`), reverse-proxy aware
 - SSH jump host with optional pinned host-key fingerprint
+
+> For Sentinel, provide the master name and one or more sentinel addresses.
+> For Cluster, provide one or more seed node addresses.
 
 ## Quick start
 
@@ -142,9 +151,10 @@ frontend/               React 19 + Vite + Tailwind v4 + Radix
 
 ## Known limitations
 
-- Cluster and Sentinel discovery are not implemented yet; connect to a single
-  endpoint (use a proxy/LB for cluster).
-- No multi-user accounts; access is a single shared token.
+- Cluster key browsing aggregates a bounded sample across masters; it is not a
+  full cluster-wide cursor, and `SCAN`-based pagination is per-node in the raw
+  protocol.
+- No multi-user accounts/RBAC; access is a single shared token.
 - Redis module types (JSON, search, etc.) are shown as raw values.
 
 ## License

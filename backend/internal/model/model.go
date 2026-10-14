@@ -10,6 +10,15 @@ const (
 	SSHAuthKey      SSHAuthMethod = "key"
 )
 
+// Mode selects how the client reaches Redis.
+type Mode string
+
+const (
+	ModeDirect   Mode = "direct"
+	ModeSentinel Mode = "sentinel"
+	ModeCluster  Mode = "cluster"
+)
+
 // SSHConfig holds the settings of an SSH tunnel (jump host).
 type SSHConfig struct {
 	Enabled    bool          `json:"enabled"`
@@ -29,6 +38,7 @@ type SSHConfig struct {
 type Connection struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
+	Mode     Mode   `json:"mode,omitempty"`
 	Host     string `json:"host"`
 	Port     int    `json:"port"`
 	Username string `json:"username,omitempty"`
@@ -39,6 +49,15 @@ type Connection struct {
 	TLSVerify bool       `json:"tlsVerify"`
 	SSH       *SSHConfig `json:"ssh,omitempty"`
 
+	// Sentinel mode.
+	MasterName       string   `json:"masterName,omitempty"`
+	Sentinels        []string `json:"sentinels,omitempty"`
+	SentinelUsername string   `json:"sentinelUsername,omitempty"`
+	SentinelPassword string   `json:"sentinelPassword,omitempty"`
+
+	// Cluster mode.
+	ClusterAddrs []string `json:"clusterAddrs,omitempty"`
+
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -46,18 +65,24 @@ type Connection struct {
 // Public returns a copy safe to send to the browser: secrets are replaced by
 // a boolean flag telling the UI whether a secret is stored.
 type PublicConnection struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	Username   string `json:"username"`
-	DB         int    `json:"db"`
-	TLS        bool   `json:"tls"`
-	TLSVerify  bool   `json:"tlsVerify"`
-	HasAuth    bool   `json:"hasAuth"`
-	SSH        *PublicSSH `json:"ssh,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Mode             Mode       `json:"mode"`
+	Host             string     `json:"host"`
+	Port             int        `json:"port"`
+	Username         string     `json:"username"`
+	DB               int        `json:"db"`
+	TLS              bool       `json:"tls"`
+	TLSVerify        bool       `json:"tlsVerify"`
+	HasAuth          bool       `json:"hasAuth"`
+	SSH              *PublicSSH `json:"ssh,omitempty"`
+	MasterName       string     `json:"masterName,omitempty"`
+	Sentinels        []string   `json:"sentinels,omitempty"`
+	ClusterAddrs     []string   `json:"clusterAddrs,omitempty"`
+	SentinelUsername string     `json:"sentinelUsername,omitempty"`
+	HasSentinelAuth  bool       `json:"hasSentinelAuth"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 type PublicSSH struct {
@@ -75,17 +100,23 @@ type PublicSSH struct {
 // Public builds the redacted representation of a connection.
 func (c Connection) Public() PublicConnection {
 	p := PublicConnection{
-		ID:        c.ID,
-		Name:      c.Name,
-		Host:      c.Host,
-		Port:      c.Port,
-		Username:  c.Username,
-		DB:        c.DB,
-		TLS:       c.TLS,
-		TLSVerify: c.TLSVerify,
-		HasAuth:   c.Password != "",
-		CreatedAt: c.CreatedAt,
-		UpdatedAt: c.UpdatedAt,
+		ID:               c.ID,
+		Name:             c.Name,
+		Mode:             c.EffectiveMode(),
+		Host:             c.Host,
+		Port:             c.Port,
+		Username:         c.Username,
+		DB:               c.DB,
+		TLS:              c.TLS,
+		TLSVerify:        c.TLSVerify,
+		HasAuth:          c.Password != "",
+		MasterName:       c.MasterName,
+		Sentinels:        c.Sentinels,
+		ClusterAddrs:     c.ClusterAddrs,
+		SentinelUsername: c.SentinelUsername,
+		HasSentinelAuth:  c.SentinelPassword != "",
+		CreatedAt:        c.CreatedAt,
+		UpdatedAt:        c.UpdatedAt,
 	}
 	if c.SSH != nil {
 		p.SSH = &PublicSSH{
@@ -103,9 +134,20 @@ func (c Connection) Public() PublicConnection {
 	return p
 }
 
+// EffectiveMode returns the configured mode, defaulting to direct.
+func (c Connection) EffectiveMode() Mode {
+	if c.Mode == "" {
+		return ModeDirect
+	}
+	return c.Mode
+}
+
 // DefaultPorts fills in sensible defaults.
 func (c *Connection) ApplyDefaults() {
-	if c.Port == 0 {
+	if c.Mode == "" {
+		c.Mode = ModeDirect
+	}
+	if c.Mode == ModeDirect && c.Port == 0 {
 		c.Port = 6379
 	}
 	if c.SSH != nil && c.SSH.Enabled {
@@ -123,6 +165,9 @@ func (c *Connection) ApplyDefaults() {
 func (c *Connection) MergeSecrets(old Connection) {
 	if c.Password == "" {
 		c.Password = old.Password
+	}
+	if c.SentinelPassword == "" {
+		c.SentinelPassword = old.SentinelPassword
 	}
 	if c.SSH != nil && old.SSH != nil {
 		c.SSH.MergeSecrets(*old.SSH)

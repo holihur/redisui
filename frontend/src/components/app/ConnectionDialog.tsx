@@ -23,16 +23,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import type { Connection, ConnectionInput, SSHAuthMethod } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { Connection, ConnectionInput, ConnectionMode, SSHAuthMethod } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
 interface FormState {
   name: string;
+  mode: ConnectionMode;
   host: string;
   port: string;
   username: string;
   password: string;
   db: string;
+  masterName: string;
+  sentinels: string;
+  clusterAddrs: string;
+  sentinelUsername: string;
+  sentinelPassword: string;
   tls: boolean;
   tlsVerify: boolean;
   sshEnabled: boolean;
@@ -48,11 +55,17 @@ interface FormState {
 
 const emptyForm: FormState = {
   name: "",
+  mode: "direct",
   host: "127.0.0.1",
   port: "6379",
   username: "",
   password: "",
   db: "0",
+  masterName: "",
+  sentinels: "",
+  clusterAddrs: "",
+  sentinelUsername: "",
+  sentinelPassword: "",
   tls: false,
   tlsVerify: false,
   sshEnabled: false,
@@ -70,11 +83,17 @@ function fromConnection(c: Connection | null): FormState {
   if (!c) return { ...emptyForm };
   return {
     name: c.name,
+    mode: c.mode ?? "direct",
     host: c.host,
     port: String(c.port || 6379),
     username: c.username ?? "",
     password: "",
     db: String(c.db ?? 0),
+    masterName: c.masterName ?? "",
+    sentinels: (c.sentinels ?? []).join("\n"),
+    clusterAddrs: (c.clusterAddrs ?? []).join("\n"),
+    sentinelUsername: c.sentinelUsername ?? "",
+    sentinelPassword: "",
     tls: c.tls,
     tlsVerify: c.tlsVerify,
     sshEnabled: !!c.ssh?.enabled,
@@ -106,29 +125,49 @@ export function ConnectionDialog() {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const buildInput = (): ConnectionInput => ({
-    name: form.name.trim(),
-    host: form.host.trim(),
-    port: Number(form.port) || 6379,
-    username: form.username.trim() || undefined,
-    password: form.password || undefined,
-    db: Number(form.db) || 0,
-    tls: form.tls,
-    tlsVerify: form.tlsVerify,
-    ssh: form.sshEnabled
-      ? {
-          enabled: true,
-          host: form.sshHost.trim(),
-          port: Number(form.sshPort) || 22,
-          user: form.sshUser.trim(),
-          authMethod: form.sshAuthMethod,
-          password: form.sshPassword || undefined,
-          privateKey: form.sshPrivateKey || undefined,
-          passphrase: form.sshPassphrase || undefined,
-          hostKeyFingerprint: form.sshFingerprint.trim() || undefined,
-        }
-      : undefined,
-  });
+  const buildInput = (): ConnectionInput => {
+    const sentinels = form.sentinels
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const clusterAddrs = form.clusterAddrs
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return {
+      name: form.name.trim(),
+      mode: form.mode,
+      host: form.host.trim(),
+      port: Number(form.port) || 6379,
+      username: form.username.trim() || undefined,
+      password: form.password || undefined,
+      db: Number(form.db) || 0,
+      masterName: form.mode === "sentinel" ? form.masterName.trim() : undefined,
+      sentinels: form.mode === "sentinel" ? sentinels : undefined,
+      clusterAddrs: form.mode === "cluster" ? clusterAddrs : undefined,
+      sentinelUsername:
+        form.mode === "sentinel"
+          ? form.sentinelUsername.trim() || undefined
+          : undefined,
+      sentinelPassword:
+        form.mode === "sentinel" ? form.sentinelPassword || undefined : undefined,
+      tls: form.tls,
+      tlsVerify: form.tlsVerify,
+      ssh: form.sshEnabled
+        ? {
+            enabled: true,
+            host: form.sshHost.trim(),
+            port: Number(form.sshPort) || 22,
+            user: form.sshUser.trim(),
+            authMethod: form.sshAuthMethod,
+            password: form.sshPassword || undefined,
+            privateKey: form.sshPrivateKey || undefined,
+            passphrase: form.sshPassphrase || undefined,
+            hostKeyFingerprint: form.sshFingerprint.trim() || undefined,
+          }
+        : undefined,
+    };
+  };
 
   const handleTest = async () => {
     setTesting(true);
@@ -148,8 +187,20 @@ export function ConnectionDialog() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.host.trim()) {
-      toast.error("Name and host are required");
+    if (!form.name.trim()) {
+      toast.error("Connection name is required");
+      return;
+    }
+    if (form.mode === "direct" && !form.host.trim()) {
+      toast.error("Host is required for a direct connection");
+      return;
+    }
+    if (form.mode === "sentinel" && (!form.masterName.trim() || !form.sentinels.trim())) {
+      toast.error("Master name and at least one sentinel are required");
+      return;
+    }
+    if (form.mode === "cluster" && !form.clusterAddrs.trim()) {
+      toast.error("At least one cluster address is required");
       return;
     }
     setSaving(true);
@@ -195,30 +246,123 @@ export function ConnectionDialog() {
               />
             </div>
 
-            <div className="grid grid-cols-[1fr_7rem] gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="conn-host">Host</Label>
-                <Input
-                  id="conn-host"
-                  value={form.host}
-                  onChange={(e) => set("host", e.target.value)}
-                  placeholder="127.0.0.1"
-                  className="font-mono"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="conn-port">Port</Label>
-                <Input
-                  id="conn-port"
-                  value={form.port}
-                  onChange={(e) => set("port", e.target.value)}
-                  inputMode="numeric"
-                  className="font-mono"
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label>Mode</Label>
+              <Select
+                value={form.mode}
+                onValueChange={(v) => set("mode", v as ConnectionMode)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  <SelectItem value="sentinel">Sentinel</SelectItem>
+                  <SelectItem value="cluster">Cluster</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_6rem]">
+            {form.mode === "direct" ? (
+              <div className="grid grid-cols-[1fr_7rem] gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="conn-host">Host</Label>
+                  <Input
+                    id="conn-host"
+                    value={form.host}
+                    onChange={(e) => set("host", e.target.value)}
+                    placeholder="127.0.0.1"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="conn-port">Port</Label>
+                  <Input
+                    id="conn-port"
+                    value={form.port}
+                    onChange={(e) => set("port", e.target.value)}
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {form.mode === "sentinel" ? (
+              <div className="grid gap-3 rounded-lg border p-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="conn-master">Master name</Label>
+                  <Input
+                    id="conn-master"
+                    value={form.masterName}
+                    onChange={(e) => set("masterName", e.target.value)}
+                    placeholder="mymaster"
+                    className="font-mono"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="conn-sentinels">
+                    Sentinel addresses (one per line)
+                  </Label>
+                  <Textarea
+                    id="conn-sentinels"
+                    value={form.sentinels}
+                    onChange={(e) => set("sentinels", e.target.value)}
+                    placeholder="127.0.0.1:26379&#10;127.0.0.1:26380"
+                    className="min-h-20 font-mono text-xs"
+                  />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="conn-sentinel-user">Sentinel user</Label>
+                    <Input
+                      id="conn-sentinel-user"
+                      value={form.sentinelUsername}
+                      onChange={(e) => set("sentinelUsername", e.target.value)}
+                      placeholder="optional"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="conn-sentinel-pass">Sentinel password</Label>
+                    <Input
+                      id="conn-sentinel-pass"
+                      type="password"
+                      value={form.sentinelPassword}
+                      onChange={(e) => set("sentinelPassword", e.target.value)}
+                      placeholder={
+                        editing?.hasSentinelAuth ? "•••• unchanged" : "optional"
+                      }
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {form.mode === "cluster" ? (
+              <div className="grid gap-2">
+                <Label htmlFor="conn-cluster">
+                  Cluster seed addresses (one per line)
+                </Label>
+                <Textarea
+                  id="conn-cluster"
+                  value={form.clusterAddrs}
+                  onChange={(e) => set("clusterAddrs", e.target.value)}
+                  placeholder="127.0.0.1:7001&#10;127.0.0.1:7002&#10;127.0.0.1:7003"
+                  className="min-h-20 font-mono text-xs"
+                />
+              </div>
+            ) : null}
+
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-3",
+                form.mode === "cluster"
+                  ? "sm:grid-cols-2"
+                  : "sm:grid-cols-[1fr_1fr_6rem]",
+              )}
+            >
               <div className="grid gap-2">
                 <Label htmlFor="conn-user">Username</Label>
                 <Input
@@ -240,16 +384,18 @@ export function ConnectionDialog() {
                   autoComplete="new-password"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="conn-db">Database</Label>
-                <Input
-                  id="conn-db"
-                  value={form.db}
-                  onChange={(e) => set("db", e.target.value)}
-                  inputMode="numeric"
-                  className="font-mono"
-                />
-              </div>
+              {form.mode !== "cluster" ? (
+                <div className="grid gap-2">
+                  <Label htmlFor="conn-db">Database</Label>
+                  <Input
+                    id="conn-db"
+                    value={form.db}
+                    onChange={(e) => set("db", e.target.value)}
+                    inputMode="numeric"
+                    className="font-mono"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-3 rounded-lg border p-3">

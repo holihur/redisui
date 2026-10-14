@@ -5,6 +5,7 @@ import {
   Menu,
   Moon,
   Plus,
+  Radar,
   Radio,
   Sun,
   Terminal,
@@ -70,6 +71,11 @@ export function AppHeader() {
           <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
             db{session.db}
           </Badge>
+          {session.mode && session.mode !== "direct" ? (
+            <Badge variant="outline" className="hidden text-[10px] capitalize sm:inline-flex">
+              {session.mode}
+            </Badge>
+          ) : null}
           {session.tls ? (
             <Badge variant="outline" className="hidden text-[10px] sm:inline-flex">
               TLS
@@ -145,6 +151,10 @@ export function AppHeader() {
             <DropdownMenuItem onSelect={() => setActiveTool("pubsub")}>
               <Radio className="size-4" />
               Pub/Sub monitor
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveTool("monitor")}>
+              <Radar className="size-4" />
+              Profiler (MONITOR)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

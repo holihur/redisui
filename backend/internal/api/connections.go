@@ -48,9 +48,26 @@ func (s *Server) createConnection(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, err)
 		return
 	}
-	if c.Name == "" || c.Host == "" {
-		writeErr(w, http.StatusBadRequest, errString("name and host are required"))
+	if c.Name == "" {
+		writeErr(w, http.StatusBadRequest, errString("name is required"))
 		return
+	}
+	switch c.EffectiveMode() {
+	case model.ModeSentinel:
+		if c.MasterName == "" || len(c.Sentinels) == 0 {
+			writeErr(w, http.StatusBadRequest, errString("master name and at least one sentinel address are required"))
+			return
+		}
+	case model.ModeCluster:
+		if len(c.ClusterAddrs) == 0 {
+			writeErr(w, http.StatusBadRequest, errString("at least one cluster address is required"))
+			return
+		}
+	default:
+		if c.Host == "" {
+			writeErr(w, http.StatusBadRequest, errString("host is required"))
+			return
+		}
 	}
 	c.ID = newID()
 	created, err := s.store.Create(c)
@@ -112,6 +129,9 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 	// Allow testing a saved profile by id while keeping stored secrets.
 	if c.ID != "" {
 		if old, err := s.store.Get(c.ID); err == nil {
+			if c.Mode == "" {
+				c.Mode = old.EffectiveMode()
+			}
 			if c.Host == "" {
 				c.Host = old.Host
 			}
@@ -123,6 +143,21 @@ func (s *Server) testConnection(w http.ResponseWriter, r *http.Request) {
 			}
 			if c.Password == "" {
 				c.Password = old.Password
+			}
+			if c.MasterName == "" {
+				c.MasterName = old.MasterName
+			}
+			if len(c.Sentinels) == 0 {
+				c.Sentinels = old.Sentinels
+			}
+			if len(c.ClusterAddrs) == 0 {
+				c.ClusterAddrs = old.ClusterAddrs
+			}
+			if c.SentinelUsername == "" {
+				c.SentinelUsername = old.SentinelUsername
+			}
+			if c.SentinelPassword == "" {
+				c.SentinelPassword = old.SentinelPassword
 			}
 			if c.SSH == nil {
 				c.SSH = old.SSH

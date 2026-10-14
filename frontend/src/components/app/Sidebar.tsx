@@ -40,6 +40,18 @@ import { cn } from "@/lib/utils";
 import type { Connection } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
+function connSubtitle(c: Connection): string {
+  const tls = c.tls ? " · tls" : "";
+  switch (c.mode) {
+    case "sentinel":
+      return `sentinel · ${c.masterName || "?"}${tls}`;
+    case "cluster":
+      return `cluster · ${c.clusterAddrs?.length ?? 0} nodes${tls}`;
+    default:
+      return `${c.host}:${c.port}${tls}`;
+  }
+}
+
 export function Sidebar() {
   const connections = useAppStore((s) => s.connections);
   const connectionsLoading = useAppStore((s) => s.connectionsLoading);
@@ -78,12 +90,17 @@ export function Sidebar() {
     try {
       await api.createConnection({
         name: `${conn.name} copy`,
+        mode: conn.mode,
         host: conn.host,
         port: conn.port,
         username: conn.username,
         db: conn.db,
         tls: conn.tls,
         tlsVerify: conn.tlsVerify,
+        masterName: conn.masterName,
+        sentinels: conn.sentinels,
+        clusterAddrs: conn.clusterAddrs,
+        sentinelUsername: conn.sentinelUsername,
         ssh: conn.ssh
           ? {
               enabled: conn.ssh.enabled,
@@ -238,8 +255,7 @@ export function Sidebar() {
                               ) : null}
                             </span>
                             <span className="block truncate font-mono text-[10px] text-muted-foreground">
-                              {conn.host}:{conn.port}
-                              {conn.tls ? " · tls" : ""}
+                              {connSubtitle(conn)}
                             </span>
                           </span>
                         </button>

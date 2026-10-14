@@ -1,5 +1,7 @@
 export type SSHAuthMethod = "password" | "key";
 
+export type ConnectionMode = "direct" | "sentinel" | "cluster";
+
 export interface SSHConfigInput {
   enabled: boolean;
   host: string;
@@ -27,6 +29,7 @@ export interface PublicSSH {
 export interface Connection {
   id: string;
   name: string;
+  mode: ConnectionMode;
   host: string;
   port: number;
   username: string;
@@ -35,12 +38,18 @@ export interface Connection {
   tlsVerify: boolean;
   hasAuth: boolean;
   ssh?: PublicSSH;
+  masterName?: string;
+  sentinels?: string[];
+  clusterAddrs?: string[];
+  sentinelUsername?: string;
+  hasSentinelAuth: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ConnectionInput {
   name: string;
+  mode?: ConnectionMode;
   host: string;
   port: number;
   username?: string;
@@ -48,6 +57,11 @@ export interface ConnectionInput {
   db: number;
   tls: boolean;
   tlsVerify: boolean;
+  masterName?: string;
+  sentinels?: string[];
+  clusterAddrs?: string[];
+  sentinelUsername?: string;
+  sentinelPassword?: string;
   ssh?: SSHConfigInput;
 }
 
@@ -95,6 +109,7 @@ export interface SessionInfo {
   id: string;
   connId: string;
   name: string;
+  mode: ConnectionMode;
   host: string;
   port: number;
   db: number;
@@ -156,7 +171,7 @@ export interface PubSubEvent {
   payload: string;
 }
 
-export type ToolKey = "slowlog" | "memory" | "clients" | "pubsub";
+export type ToolKey = "slowlog" | "memory" | "clients" | "pubsub" | "monitor";
 
 export interface Mutation {
   db: number;
