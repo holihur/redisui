@@ -1,5 +1,7 @@
 # RedisUI
 
+[![CI](https://github.com/holihur/redisui/actions/workflows/ci.yml/badge.svg)](https://github.com/holihur/redisui/actions/workflows/ci.yml)
+
 A modern, self-hosted Redis GUI. Single Go binary that serves a React SPA, with
 SSH tunnels, a `:`-delimited key tree, encrypted credentials at rest, and
 token-based remote access.
