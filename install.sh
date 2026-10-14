@@ -66,9 +66,13 @@ trap 'rm -rf "$tmp"' EXIT
 
 fetch() {
   url="$1"; out="$2"
-  if command -v curl >/dev/null 2>&1; then curl -fL "$url" -o "$out"
-  elif command -v wget >/dev/null 2>&1; then wget -qO "$out" "$url"
-  else echo "need curl or wget" >&2; exit 1; fi
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL --retry 3 --connect-timeout 15 "$url" -o "$out"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$out" "$url"
+  else
+    echo "need curl or wget" >&2; exit 1
+  fi
 }
 
 echo "Downloading ${base}/${asset}"
