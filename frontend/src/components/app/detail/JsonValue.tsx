@@ -3,6 +3,7 @@ import { Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useI18n } from "@/lib/i18n";
 import type { EditorProps } from "./types";
 
 function prettify(value: unknown): string {
@@ -21,6 +22,7 @@ function prettify(value: unknown): string {
 
 /** Editor for RedisJSON documents (JSON.SET at the root path). */
 export function JsonValue({ detail, busy, mutate }: EditorProps) {
+  const { t } = useI18n();
   const original = useMemo(() => prettify(detail.value), [detail]);
   const [value, setValue] = useState(original);
   const [dirty, setDirty] = useState(false);
@@ -35,7 +37,7 @@ export function JsonValue({ detail, busy, mutate }: EditorProps) {
       JSON.parse(value);
     } catch (e) {
       toast.error(
-        `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
+        `${t("Invalid JSON")}: ${e instanceof Error ? e.message : String(e)}`,
       );
       return;
     }
@@ -61,10 +63,10 @@ export function JsonValue({ detail, busy, mutate }: EditorProps) {
         placeholder="{}"
       />
       <div className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-muted-foreground">
-        <span>{value.length} chars · JSON</span>
+        <span>{t("{count} chars · JSON", { count: value.length })}</span>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={format}>
-            Format
+            {t("Format")}
           </Button>
           <Button
             variant="outline"
@@ -76,11 +78,11 @@ export function JsonValue({ detail, busy, mutate }: EditorProps) {
             }}
           >
             <RotateCcw className="size-3.5" />
-            Reset
+            {t("Reset")}
           </Button>
           <Button size="sm" disabled={!dirty || busy} onClick={() => void save()}>
             <Check className="size-3.5" />
-            Save
+            {t("Save")}
           </Button>
         </div>
       </div>

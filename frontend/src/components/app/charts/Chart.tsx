@@ -1,4 +1,5 @@
 import { useElementWidth } from "@/hooks/useElementWidth";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const compact = (n: number) =>
@@ -26,6 +27,7 @@ export function LineChart({
   className?: string;
 }) {
   const { ref, width } = useElementWidth<HTMLDivElement>();
+  const { t } = useI18n();
   const w = Math.max(width, 120);
   const pad = { l: 48, r: 12, t: 12, b: 22 };
   const innerW = Math.max(w - pad.l - pad.r, 10);
@@ -40,7 +42,7 @@ export function LineChart({
           className,
         )}
       >
-        No data
+        {t("No data")}
       </div>
     );
   }
@@ -142,12 +144,13 @@ export function BarChart({
   className?: string;
   maxBars?: number;
 }) {
+  const { t } = useI18n();
   const shown = bars.slice(0, maxBars);
   const max = Math.max(1, ...shown.map((b) => b.value));
   if (shown.length === 0) {
     return (
       <p className={cn("py-6 text-center text-xs text-muted-foreground", className)}>
-        No data
+        {t("No data")}
       </p>
     );
   }

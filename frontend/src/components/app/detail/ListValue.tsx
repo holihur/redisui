@@ -10,8 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { asArray, type EditorProps } from "./types";
+import { useI18n } from "@/lib/i18n";
 
 export function ListValue({ detail, busy, mutate }: EditorProps) {
+  const { t } = useI18n();
   const rows = asArray<string>(detail.value);
   const offset = detail.offset ?? 0;
   const [edits, setEdits] = useState<Record<number, string>>({});
@@ -28,8 +30,8 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
         <table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 bg-background">
             <tr className="border-b text-left text-muted-foreground">
-              <th className="w-14 px-3 py-1.5 font-medium">Index</th>
-              <th className="px-3 py-1.5 font-medium">Value</th>
+              <th className="w-14 px-3 py-1.5 font-medium">{t("Index")}</th>
+              <th className="px-3 py-1.5 font-medium">{t("Value")}</th>
               <th className="w-24 px-2 py-1.5" />
             </tr>
           </thead>
@@ -56,7 +58,7 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
                       variant="ghost"
                       size="icon-xs"
                       disabled={!dirty || busy}
-                      title="Save element"
+                      title={t("Save element")}
                       onClick={() =>
                         void mutate({
                           action: "list.set",
@@ -76,7 +78,7 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
                     <Button
                       variant="ghost"
                       size="icon-xs"
-                      title="Remove element"
+                      title={t("Remove element")}
                       onClick={() =>
                         void mutate({
                           action: "list.rem",
@@ -97,7 +99,7 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
                   colSpan={3}
                   className="px-3 py-8 text-center text-muted-foreground"
                 >
-                  Empty list
+                  {t("Empty list")}
                 </td>
               </tr>
             ) : null}
@@ -108,7 +110,7 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
         <Input
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          placeholder="New element"
+          placeholder={t("New element")}
           className="h-8 flex-1 font-mono text-xs"
         />
         <Select value={side} onValueChange={setSide}>
@@ -134,7 +136,7 @@ export function ListValue({ detail, busy, mutate }: EditorProps) {
           ) : (
             <ArrowDownToLine className="size-3.5" />
           )}
-          Push
+          {t("Push")}
         </Button>
       </div>
     </div>

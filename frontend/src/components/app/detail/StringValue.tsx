@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { JsonHighlight } from "./JsonHighlight";
 import { tryFormatJson } from "@/lib/json";
+import { useI18n } from "@/lib/i18n";
 import type { EditorProps } from "./types";
 
 export function StringValue({ detail, busy, mutate }: EditorProps) {
+  const { t } = useI18n();
   const raw = typeof detail.value === "string" ? detail.value : "";
   const formatted = useMemo(() => tryFormatJson(raw), [raw]);
   const [value, setValue] = useState(raw);
@@ -31,7 +33,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
         <div className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Braces className="size-3" />
-            JSON · {raw.length} chars
+            {t("{count} chars · JSON", { count: raw.length })}
           </span>
           <Button
             variant="outline"
@@ -39,7 +41,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
             onClick={() => setMode("raw")}
           >
             <Pencil className="size-3.5" />
-            Edit
+            {t("Edit")}
           </Button>
         </div>
       </div>
@@ -56,11 +58,11 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
         }}
         spellCheck={false}
         className="scrollbar-thin min-h-0 flex-1 resize-none rounded-none border-0 font-mono text-xs shadow-none focus-visible:ring-0"
-        placeholder="(empty)"
+        placeholder={t("(empty)")}
       />
       <div className="flex items-center justify-between gap-2 border-t px-3 py-2 text-[11px] text-muted-foreground">
         <span>
-          {value.length} chars
+          {t("{count} chars", { count: value.length })}
           {valueFormatted ? " · JSON" : ""}
         </span>
         <div className="flex gap-2">
@@ -71,7 +73,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
               onClick={() => setMode("pretty")}
             >
               <Eye className="size-3.5" />
-              Preview
+              {t("Preview")}
             </Button>
           ) : null}
           {valueFormatted ? (
@@ -84,7 +86,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
               }}
             >
               <Sparkles className="size-3.5" />
-              Format
+              {t("Format")}
             </Button>
           ) : null}
           <Button
@@ -97,7 +99,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
             }}
           >
             <RotateCcw className="size-3.5" />
-            Reset
+            {t("Reset")}
           </Button>
           <Button
             size="sm"
@@ -109,7 +111,7 @@ export function StringValue({ detail, busy, mutate }: EditorProps) {
             }
           >
             <Check className="size-3.5" />
-            Save
+            {t("Save")}
           </Button>
         </div>
       </div>

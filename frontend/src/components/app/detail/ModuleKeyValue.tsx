@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { JsonHighlight } from "./JsonHighlight";
 import { BarChart } from "@/components/app/charts/Chart";
+import { useI18n } from "@/lib/i18n";
 import type { ModuleKind } from "@/lib/format";
 import type { EditorProps } from "./types";
 
@@ -36,6 +37,7 @@ export function ModuleKeyValue({
   mutate,
   kind,
 }: EditorProps & { kind: ModuleKind }) {
+  const { t } = useI18n();
   const data = (detail.value ?? {}) as ModuleData;
   const [value, setValue] = useState("");
   const [inc, setInc] = useState("1");
@@ -60,7 +62,7 @@ export function ModuleKeyValue({
     <div className="flex min-h-0 flex-1 flex-col">
       {data.items && data.items.length > 0 ? (
         <div className="max-h-56 shrink-0 overflow-y-auto border-b p-3">
-          <p className="mb-2 text-xs font-medium">Top items</p>
+          <p className="mb-2 text-xs font-medium">{t("Top items")}</p>
           <BarChart
             bars={data.items.map((it) => ({ label: it.item, value: it.count }))}
           />
@@ -74,7 +76,7 @@ export function ModuleKeyValue({
           onKeyDown={(e) => {
             if (e.key === "Enter") void add();
           }}
-          placeholder={isTimeseries ? "value" : PLACEHOLDER[kind]}
+          placeholder={t(isTimeseries ? "value" : PLACEHOLDER[kind])}
           className="h-8 min-w-40 flex-1 font-mono text-xs"
         />
         {kind === "cms" ? (
@@ -88,7 +90,7 @@ export function ModuleKeyValue({
         ) : null}
         <Button size="sm" disabled={busy} onClick={() => void add()}>
           <Plus className="size-3.5" />
-          Add
+          {t("Add")}
         </Button>
       </div>
 

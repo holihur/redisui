@@ -29,6 +29,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { IndexInfo, SchemaField, SearchResult } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -53,6 +54,7 @@ function QueryTab({
   db: number;
   indexes: string[];
 }) {
+  const { t } = useI18n();
   const [index, setIndex] = useState("");
   const [query, setQuery] = useState("*");
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -135,7 +137,7 @@ function QueryTab({
           ) : (
             <SearchIcon className="size-3.5" />
           )}
-          Search
+          {t("Search")}
         </Button>
       </div>
 
@@ -145,7 +147,9 @@ function QueryTab({
         <>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {result.total} result{result.total === 1 ? "" : "s"}
+              {t(result.total === 1 ? "{count} result" : "{count} results", {
+                count: result.total,
+              })}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -155,7 +159,7 @@ function QueryTab({
                 disabled={offset === 0 || loading}
                 onClick={() => void run(Math.max(0, offset - PAGE))}
               >
-                Prev
+                {t("Prev")}
               </Button>
               <span>
                 {result.hits.length === 0 ? 0 : offset + 1}–
@@ -168,7 +172,7 @@ function QueryTab({
                 disabled={offset + result.hits.length >= result.total || loading}
                 onClick={() => void run(offset + PAGE)}
               >
-                Next
+                {t("Next")}
               </Button>
             </div>
           </div>
@@ -261,6 +265,7 @@ function IndexesTab({
   onChanged: () => void;
   onQuery: (index: string) => void;
 }) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState("");
   const [info, setInfo] = useState<IndexInfo | null>(null);
   const [deleteDocs, setDeleteDocs] = useState(false);
@@ -299,7 +304,7 @@ function IndexesTab({
     setBusy(true);
     try {
       await api.dropIndex(sessionId, db, selected, deleteDocs);
-      toast.success(`Dropped index ${selected}`);
+      toast.success(t("Dropped index {name}", { name: selected }));
       setSelected("");
       onChanged();
     } catch (e) {
@@ -316,7 +321,7 @@ function IndexesTab({
       await api.alterIndex(sessionId, db, selected, [
         { ...newField, name: newField.name.trim() },
       ]);
-      toast.success(`Added field ${newField.name}`);
+      toast.success(t("Added field {name}", { name: newField.name }));
       setNewField({ name: "", type: "TEXT", options: [] });
       const res = await api.searchInfo(sessionId, db, selected);
       setInfo(res);
@@ -367,14 +372,14 @@ function IndexesTab({
           onClick={() => onQuery(selected)}
         >
           <SearchIcon className="size-3.5" />
-          Query
+          {t("Query")}
         </Button>
       </div>
 
       {info ? <IndexSummary info={info} /> : null}
 
       <div className="rounded-lg border p-3">
-        <p className="mb-2 text-xs font-medium">Add field (FT.ALTER)</p>
+        <p className="mb-2 text-xs font-medium">{t("Add field (FT.ALTER)")}</p>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={newField.name}
@@ -417,14 +422,16 @@ function IndexesTab({
       </div>
 
       <div className="rounded-lg border border-destructive/40 p-3">
-        <p className="mb-2 text-xs font-medium text-destructive">Drop index</p>
+        <p className="mb-2 text-xs font-medium text-destructive">
+          {t("Drop index")}
+        </p>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex cursor-pointer items-center gap-2 text-xs">
             <Checkbox
               checked={deleteDocs}
               onCheckedChange={(v) => setDeleteDocs(v === true)}
             />
-            Also delete indexed documents (DD)
+            {t("Also delete indexed documents (DD)")}
           </label>
           <Button
             variant="destructive"
@@ -433,7 +440,7 @@ function IndexesTab({
             onClick={() => void drop()}
           >
             <Trash2 className="size-3.5" />
-            Drop {selected}
+            {t("Drop {name}", { name: selected })}
           </Button>
         </div>
       </div>
@@ -454,6 +461,7 @@ function CreateTab({
   db: number;
   onCreated: () => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [on, setOn] = useState("HASH");
   const [prefixes, setPrefixes] = useState("");
@@ -467,12 +475,12 @@ function CreateTab({
 
   const create = async () => {
     if (!name.trim()) {
-      toast.error("Index name is required");
+      toast.error(t("Index name is required"));
       return;
     }
     const clean = fields.filter((f) => f.name.trim());
     if (clean.length === 0) {
-      toast.error("Add at least one field");
+      toast.error(t("Add at least one field"));
       return;
     }
     setBusy(true);
@@ -484,7 +492,7 @@ function CreateTab({
         prefixes: prefixes.split(",").map((s) => s.trim()).filter(Boolean),
         fields: clean.map((f) => ({ ...f, name: f.name.trim() })),
       });
-      toast.success(`Created index ${name.trim()}`);
+      toast.success(t("Created index {name}", { name: name.trim() }));
       setName("");
       setPrefixes("");
       setFields([{ name: "", type: "TEXT", options: [] }]);
@@ -500,7 +508,7 @@ function CreateTab({
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
         <div className="grid gap-2">
-          <Label htmlFor="idx-name">Index name</Label>
+          <Label htmlFor="idx-name">{t("Index name")}</Label>
           <Input
             id="idx-name"
             value={name}
@@ -524,7 +532,7 @@ function CreateTab({
       </div>
 
       <div className="grid gap-2">
-        <Label htmlFor="idx-prefix">Key prefixes (comma-separated, optional)</Label>
+        <Label htmlFor="idx-prefix">{t("Key prefixes (comma-separated, optional)")}</Label>
         <Input
           id="idx-prefix"
           value={prefixes}
@@ -535,7 +543,7 @@ function CreateTab({
       </div>
 
       <div className="space-y-2">
-        <Label>Fields</Label>
+        <Label>{t("Fields")}</Label>
         {fields.map((f, i) => (
           <div key={i} className="flex flex-wrap items-center gap-2">
             <Input
@@ -591,7 +599,7 @@ function CreateTab({
       <div className="flex justify-end">
         <Button disabled={busy} onClick={() => void create()}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-          Create index
+          {t("Create index")}
         </Button>
       </div>
     </div>
@@ -609,6 +617,7 @@ export function SearchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useI18n();
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
   const [indexes, setIndexes] = useState<string[]>([]);
@@ -637,16 +646,16 @@ export function SearchDialog({
         <DialogHeader>
           <DialogTitle>RediSearch</DialogTitle>
           <DialogDescription>
-            Query and manage search indexes (db{activeDb}).
+            {t("Query and manage search indexes (db{db}).", { db: activeDb })}
           </DialogDescription>
         </DialogHeader>
 
         {session ? (
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList className="scrollbar-thin w-full justify-start overflow-x-auto">
-              <TabsTrigger value="query">Query</TabsTrigger>
-              <TabsTrigger value="indexes">Indexes</TabsTrigger>
-              <TabsTrigger value="create">Create</TabsTrigger>
+              <TabsTrigger value="query">{t("Query")}</TabsTrigger>
+              <TabsTrigger value="indexes">{t("Indexes")}</TabsTrigger>
+              <TabsTrigger value="create">{t("Create")}</TabsTrigger>
             </TabsList>
             {error ? (
               <p className="mt-2 text-xs text-destructive">{error}</p>

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { ClientInfo } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -33,6 +34,7 @@ export function ClientsDialog({
 }) {
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,15 +61,17 @@ export function ClientsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Connected clients</DialogTitle>
+          <DialogTitle>{t("Connected clients")}</DialogTitle>
           <DialogDescription>
-            Output of <span className="font-mono">CLIENT LIST</span>.
+            {t("Output of CLIENT LIST.")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
-            {clients.length} client{clients.length === 1 ? "" : "s"}
+            {t(clients.length === 1 ? "{count} client" : "{count} clients", {
+              count: clients.length,
+            })}
           </span>
           <Button
             variant="outline"
@@ -80,7 +84,7 @@ export function ClientsDialog({
             ) : (
               <RefreshCw className="size-3.5" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </div>
 

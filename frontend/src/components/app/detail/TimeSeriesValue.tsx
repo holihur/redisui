@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { LineChart } from "@/components/app/charts/Chart";
+import { useI18n } from "@/lib/i18n";
 import type { EditorProps } from "./types";
 
 interface TSData {
@@ -26,6 +27,7 @@ const show = (v: unknown) => (v === undefined || v === null ? "—" : String(v))
 
 /** Editor for RedisTimeSeries: recent samples + add-sample form. */
 export function TimeSeriesValue({ detail, busy, mutate }: EditorProps) {
+  const { t } = useI18n();
   const data = (detail.value ?? {}) as TSData;
   const samples = data.samples ?? [];
   const info = data.info ?? {};
@@ -70,7 +72,7 @@ export function TimeSeriesValue({ detail, busy, mutate }: EditorProps) {
         <Input
           value={ts}
           onChange={(e) => setTs(e.target.value)}
-          placeholder="timestamp (blank = now)"
+          placeholder={t("timestamp (blank = now)")}
           inputMode="numeric"
           className="h-8 w-48 font-mono text-xs"
         />
@@ -80,19 +82,19 @@ export function TimeSeriesValue({ detail, busy, mutate }: EditorProps) {
           onKeyDown={(e) => {
             if (e.key === "Enter") void add();
           }}
-          placeholder="value"
+          placeholder={t("value")}
           className="h-8 w-32 font-mono text-xs"
         />
         <Button size="sm" disabled={busy} onClick={() => void add()}>
           <Plus className="size-3.5" />
-          Add sample
+          {t("Add sample")}
         </Button>
       </div>
 
       <ScrollArea className="flex-1">
         {samples.length === 0 ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            No samples
+            {t("No samples")}
           </p>
         ) : (
           <table className="w-full text-xs">

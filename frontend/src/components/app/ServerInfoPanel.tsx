@@ -11,15 +11,17 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { ModuleInfo, ServerInfo } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
 function KeyValues({ data }: { data: Record<string, string> }) {
+  const { t } = useI18n();
   const entries = Object.entries(data);
   if (entries.length === 0) {
     return (
       <p className="py-8 text-center text-xs text-muted-foreground">
-        No data
+        {t("No data")}
       </p>
     );
   }
@@ -44,6 +46,7 @@ export function ServerInfoPanel() {
   const setOpen = useAppStore((s) => s.setServerInfoOpen);
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
 
   const [info, setInfo] = useState<ServerInfo | null>(null);
   const [modules, setModules] = useState<ModuleInfo[]>([]);
@@ -81,10 +84,9 @@ export function ServerInfoPanel() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-h-[85svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Server information</DialogTitle>
+          <DialogTitle>{t("Server information")}</DialogTitle>
           <DialogDescription>
-            Live output of the Redis <span className="font-mono">INFO</span>{" "}
-            command.
+            {t("Live output of the Redis INFO command.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -95,13 +97,13 @@ export function ServerInfoPanel() {
         ) : (
           <Tabs defaultValue="server">
             <TabsList className="scrollbar-thin w-full justify-start overflow-x-auto">
-              <TabsTrigger value="server">Server</TabsTrigger>
-              <TabsTrigger value="clients">Clients</TabsTrigger>
-              <TabsTrigger value="memory">Memory</TabsTrigger>
-              <TabsTrigger value="keyspace">Keyspace</TabsTrigger>
-              <TabsTrigger value="stats">Stats</TabsTrigger>
-              <TabsTrigger value="replication">Replication</TabsTrigger>
-              <TabsTrigger value="modules">Modules</TabsTrigger>
+              <TabsTrigger value="server">{t("Server")}</TabsTrigger>
+              <TabsTrigger value="clients">{t("Clients")}</TabsTrigger>
+              <TabsTrigger value="memory">{t("Memory")}</TabsTrigger>
+              <TabsTrigger value="keyspace">{t("Keyspace")}</TabsTrigger>
+              <TabsTrigger value="stats">{t("Stats")}</TabsTrigger>
+              <TabsTrigger value="replication">{t("Replication")}</TabsTrigger>
+              <TabsTrigger value="modules">{t("Modules")}</TabsTrigger>
             </TabsList>
             <ScrollArea className="h-[55svh] pr-3">
               <TabsContent value="server" className="mt-3">
@@ -125,7 +127,7 @@ export function ServerInfoPanel() {
               <TabsContent value="modules" className="mt-3">
                 {modules.length === 0 ? (
                   <p className="py-8 text-center text-xs text-muted-foreground">
-                    No modules loaded
+                    {t("No modules loaded")}
                   </p>
                 ) : (
                   <table className="w-full text-xs">

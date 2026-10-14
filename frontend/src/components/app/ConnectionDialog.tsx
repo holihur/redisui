@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import type { Connection, ConnectionInput, ConnectionMode, SSHAuthMethod } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -109,6 +110,7 @@ function fromConnection(c: Connection | null): FormState {
 }
 
 export function ConnectionDialog() {
+  const { t } = useI18n();
   const open = useAppStore((s) => s.connectionDialogOpen);
   const editing = useAppStore((s) => s.editingConnection);
   const close = useAppStore((s) => s.closeConnectionDialog);
@@ -171,16 +173,16 @@ export function ConnectionDialog() {
 
   const handleTest = async () => {
     setTesting(true);
-    const t = toast.loading("Testing connection…");
+    const tid = toast.loading(t("Testing connection…"));
     try {
       const res = await api.testConnection({
         ...buildInput(),
         ...(editing ? { id: editing.id } : {}),
       });
-      if (res.ok) toast.success("Connection successful", { id: t });
-      else toast.error(res.error ?? "Connection failed", { id: t });
+      if (res.ok) toast.success(t("Connection successful"), { id: tid });
+      else toast.error(res.error ?? t("Connection failed"), { id: tid });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e), { id: t });
+      toast.error(e instanceof Error ? e.message : String(e), { id: tid });
     } finally {
       setTesting(false);
     }
@@ -188,29 +190,29 @@ export function ConnectionDialog() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast.error("Connection name is required");
+      toast.error(t("Connection name is required"));
       return;
     }
     if (form.mode === "direct" && !form.host.trim()) {
-      toast.error("Host is required for a direct connection");
+      toast.error(t("Host is required for a direct connection"));
       return;
     }
     if (form.mode === "sentinel" && (!form.masterName.trim() || !form.sentinels.trim())) {
-      toast.error("Master name and at least one sentinel are required");
+      toast.error(t("Master name and at least one sentinel are required"));
       return;
     }
     if (form.mode === "cluster" && !form.clusterAddrs.trim()) {
-      toast.error("At least one cluster address is required");
+      toast.error(t("At least one cluster address is required"));
       return;
     }
     setSaving(true);
     try {
       if (editing) {
         await api.updateConnection(editing.id, buildInput());
-        toast.success("Connection updated");
+        toast.success(t("Connection updated"));
       } else {
         await api.createConnection(buildInput());
-        toast.success("Connection created");
+        toast.success(t("Connection created"));
       }
       await loadConnections();
       close();
@@ -226,18 +228,19 @@ export function ConnectionDialog() {
       <DialogContent className="max-h-[90svh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="border-b px-4 py-4 sm:px-6">
           <DialogTitle>
-            {editing ? "Edit connection" : "New connection"}
+            {t(editing ? "Edit connection" : "New connection")}
           </DialogTitle>
           <DialogDescription>
-            Configure the Redis endpoint. Optionally route the connection
-            through an SSH jump host.
+            {t(
+              "Configure the Redis endpoint. Optionally route the connection through an SSH jump host.",
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="scrollbar-thin max-h-[calc(90svh-9rem)] overflow-y-auto px-4 py-5 sm:px-6">
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="conn-name">Connection name</Label>
+              <Label htmlFor="conn-name">{t("Connection name")}</Label>
               <Input
                 id="conn-name"
                 value={form.name}
@@ -247,7 +250,7 @@ export function ConnectionDialog() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Mode</Label>
+              <Label>{t("Mode")}</Label>
               <Select
                 value={form.mode}
                 onValueChange={(v) => set("mode", v as ConnectionMode)}
@@ -256,9 +259,9 @@ export function ConnectionDialog() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="direct">Direct</SelectItem>
-                  <SelectItem value="sentinel">Sentinel</SelectItem>
-                  <SelectItem value="cluster">Cluster</SelectItem>
+                  <SelectItem value="direct">{t("Direct")}</SelectItem>
+                  <SelectItem value="sentinel">{t("Sentinel")}</SelectItem>
+                  <SelectItem value="cluster">{t("Cluster")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -266,7 +269,7 @@ export function ConnectionDialog() {
             {form.mode === "direct" ? (
               <div className="grid grid-cols-[1fr_7rem] gap-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="conn-host">Host</Label>
+                  <Label htmlFor="conn-host">{t("Host")}</Label>
                   <Input
                     id="conn-host"
                     value={form.host}
@@ -276,7 +279,7 @@ export function ConnectionDialog() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="conn-port">Port</Label>
+                  <Label htmlFor="conn-port">{t("Port")}</Label>
                   <Input
                     id="conn-port"
                     value={form.port}
@@ -291,7 +294,7 @@ export function ConnectionDialog() {
             {form.mode === "sentinel" ? (
               <div className="grid gap-3 rounded-lg border p-3">
                 <div className="grid gap-2">
-                  <Label htmlFor="conn-master">Master name</Label>
+                  <Label htmlFor="conn-master">{t("Master name")}</Label>
                   <Input
                     id="conn-master"
                     value={form.masterName}
@@ -302,7 +305,7 @@ export function ConnectionDialog() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="conn-sentinels">
-                    Sentinel addresses (one per line)
+                    {t("Sentinel addresses (one per line)")}
                   </Label>
                   <Textarea
                     id="conn-sentinels"
@@ -314,7 +317,7 @@ export function ConnectionDialog() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="conn-sentinel-user">Sentinel user</Label>
+                    <Label htmlFor="conn-sentinel-user">{t("Sentinel user")}</Label>
                     <Input
                       id="conn-sentinel-user"
                       value={form.sentinelUsername}
@@ -324,7 +327,7 @@ export function ConnectionDialog() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="conn-sentinel-pass">Sentinel password</Label>
+                    <Label htmlFor="conn-sentinel-pass">{t("Sentinel password")}</Label>
                     <Input
                       id="conn-sentinel-pass"
                       type="password"
@@ -343,7 +346,7 @@ export function ConnectionDialog() {
             {form.mode === "cluster" ? (
               <div className="grid gap-2">
                 <Label htmlFor="conn-cluster">
-                  Cluster seed addresses (one per line)
+                  {t("Cluster seed addresses (one per line)")}
                 </Label>
                 <Textarea
                   id="conn-cluster"
@@ -364,7 +367,7 @@ export function ConnectionDialog() {
               )}
             >
               <div className="grid gap-2">
-                <Label htmlFor="conn-user">Username</Label>
+                <Label htmlFor="conn-user">{t("Username")}</Label>
                 <Input
                   id="conn-user"
                   value={form.username}
@@ -374,7 +377,7 @@ export function ConnectionDialog() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="conn-pass">Password</Label>
+                <Label htmlFor="conn-pass">{t("Password")}</Label>
                 <Input
                   id="conn-pass"
                   type="password"
@@ -386,7 +389,7 @@ export function ConnectionDialog() {
               </div>
               {form.mode !== "cluster" ? (
                 <div className="grid gap-2">
-                  <Label htmlFor="conn-db">Database</Label>
+                  <Label htmlFor="conn-db">{t("Database")}</Label>
                   <Input
                     id="conn-db"
                     value={form.db}
@@ -403,9 +406,9 @@ export function ConnectionDialog() {
                 <span className="flex items-center gap-2 text-sm">
                   <ShieldCheck className="size-4 text-muted-foreground" />
                   <span>
-                    <span className="font-medium">Use TLS</span>
+                    <span className="font-medium">{t("Use TLS")}</span>
                     <span className="block text-xs text-muted-foreground">
-                      Encrypt the connection to Redis (rediss://)
+                      {t("Encrypt the connection to Redis (rediss://)")}
                     </span>
                   </span>
                 </span>
@@ -417,9 +420,9 @@ export function ConnectionDialog() {
               {form.tls ? (
                 <label className="flex cursor-pointer items-center justify-between gap-3 border-t pt-3">
                   <span className="text-sm">
-                    <span className="font-medium">Verify certificate</span>
+                    <span className="font-medium">{t("Verify certificate")}</span>
                     <span className="block text-xs text-muted-foreground">
-                      Validate the server certificate chain
+                      {t("Validate the server certificate chain")}
                     </span>
                   </span>
                   <Switch
@@ -434,7 +437,7 @@ export function ConnectionDialog() {
           <div className="my-6 flex items-center gap-3">
             <Separator className="flex-1" />
             <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              SSH tunnel
+              {t("SSH tunnel")}
             </span>
             <Separator className="flex-1" />
           </div>
@@ -442,9 +445,9 @@ export function ConnectionDialog() {
           <div className="rounded-lg border">
             <label className="flex cursor-pointer items-center justify-between gap-3 p-3">
               <span className="text-sm">
-                <span className="font-medium">Connect over SSH</span>
+                <span className="font-medium">{t("Connect over SSH")}</span>
                 <span className="block text-xs text-muted-foreground">
-                  Tunnel the Redis traffic through a jump host
+                  {t("Tunnel the Redis traffic through a jump host")}
                 </span>
               </span>
               <Switch
@@ -457,7 +460,7 @@ export function ConnectionDialog() {
               <div className="space-y-4 border-t p-3">
                 <div className="grid grid-cols-[1fr_7rem] gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="ssh-host">SSH host</Label>
+                    <Label htmlFor="ssh-host">{t("SSH host")}</Label>
                     <Input
                       id="ssh-host"
                       value={form.sshHost}
@@ -467,7 +470,7 @@ export function ConnectionDialog() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="ssh-port">Port</Label>
+                    <Label htmlFor="ssh-port">{t("Port")}</Label>
                     <Input
                       id="ssh-port"
                       value={form.sshPort}
@@ -480,7 +483,7 @@ export function ConnectionDialog() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label htmlFor="ssh-user">SSH user</Label>
+                    <Label htmlFor="ssh-user">{t("SSH user")}</Label>
                     <Input
                       id="ssh-user"
                       value={form.sshUser}
@@ -490,7 +493,7 @@ export function ConnectionDialog() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label>Authentication</Label>
+                    <Label>{t("Authentication")}</Label>
                     <Select
                       value={form.sshAuthMethod}
                       onValueChange={(v) =>
@@ -501,8 +504,8 @@ export function ConnectionDialog() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="password">Password</SelectItem>
-                        <SelectItem value="key">Private key</SelectItem>
+                        <SelectItem value="password">{t("Password")}</SelectItem>
+                        <SelectItem value="key">{t("Private key")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -510,7 +513,7 @@ export function ConnectionDialog() {
 
                 {form.sshAuthMethod === "password" ? (
                   <div className="grid gap-2">
-                    <Label htmlFor="ssh-pass">SSH password</Label>
+                    <Label htmlFor="ssh-pass">{t("SSH password")}</Label>
                     <Input
                       id="ssh-pass"
                       type="password"
@@ -532,14 +535,14 @@ export function ConnectionDialog() {
                         onChange={(e) => set("sshPrivateKey", e.target.value)}
                         placeholder={
                           editing?.ssh?.hasPrivateKey
-                            ? "•••• stored, leave empty to keep"
+                            ? t("•••• stored, leave empty to keep")
                             : "-----BEGIN OPENSSH PRIVATE KEY-----\n…\nor a path like ~/.ssh/id_ed25519"
                         }
                         className="min-h-28 font-mono text-xs"
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="ssh-passphrase">Key passphrase</Label>
+                      <Label htmlFor="ssh-passphrase">{t("Key passphrase")}</Label>
                       <Input
                         id="ssh-passphrase"
                         type="password"
@@ -553,7 +556,7 @@ export function ConnectionDialog() {
                 )}
 
                 <div className="grid gap-2">
-                  <Label htmlFor="ssh-fp">Pinned host key (optional)</Label>
+                  <Label htmlFor="ssh-fp">{t("Pinned host key (optional)")}</Label>
                   <Input
                     id="ssh-fp"
                     value={form.sshFingerprint}
@@ -579,7 +582,7 @@ export function ConnectionDialog() {
             ) : (
               <Plug className="size-4" />
             )}
-            Test
+            {t("Test")}
           </Button>
           <Button
             type="button"
@@ -591,7 +594,7 @@ export function ConnectionDialog() {
             ) : (
               <Save className="size-4" />
             )}
-            {editing ? "Save changes" : "Create"}
+            {t(editing ? "Save changes" : "Create")}
           </Button>
         </DialogFooter>
       </DialogContent>

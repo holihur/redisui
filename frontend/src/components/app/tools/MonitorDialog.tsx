@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { useAppStore } from "@/store/useAppStore";
 
 interface MonitorLine {
@@ -29,6 +30,7 @@ export function MonitorDialog({
 }) {
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
   const [running, setRunning] = useState(false);
   const [lines, setLines] = useState<MonitorLine[]>([]);
   const [filter, setFilter] = useState("");
@@ -82,10 +84,12 @@ export function MonitorDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Profiler (MONITOR)</DialogTitle>
+          <DialogTitle>{t("Profiler (MONITOR)")}</DialogTitle>
           <DialogDescription>
-            Streams every command the server processes. Use with care on busy
-            servers (db{activeDb}).
+            {t(
+              "Streams every command the server processes. Use with care on busy servers (db{db}).",
+              { db: activeDb },
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -93,12 +97,12 @@ export function MonitorDialog({
           {running ? (
             <Button variant="destructive" size="sm" onClick={stop}>
               <Square className="size-3.5" />
-              Stop
+              {t("Stop")}
             </Button>
           ) : (
             <Button size="sm" onClick={start}>
               <Radar className="size-3.5" />
-              Start
+              {t("Start")}
             </Button>
           )}
           <Button
@@ -108,16 +112,17 @@ export function MonitorDialog({
             disabled={lines.length === 0}
           >
             <Eraser className="size-3.5" />
-            Clear
+            {t("Clear")}
           </Button>
           <Input
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter…"
+            placeholder={t("Filter…")}
             className="h-8 w-40 font-mono text-xs"
           />
           <span className="ml-auto text-xs text-muted-foreground">
-            {running ? "Monitoring…" : "Stopped"} · {visible.length} lines
+            {running ? t("Monitoring…") : t("Stopped")} ·{" "}
+            {t("{count} lines", { count: visible.length })}
           </span>
         </div>
 
@@ -126,7 +131,7 @@ export function MonitorDialog({
           className="scrollbar-thin h-[52svh] overflow-y-auto rounded-md border bg-muted/20 p-2 font-mono text-[11px] leading-relaxed"
         >
           {visible.length === 0 ? (
-            <p className="px-1 py-2 text-muted-foreground">No commands yet.</p>
+            <p className="px-1 py-2 text-muted-foreground">{t("No commands yet.")}</p>
           ) : (
             visible.map((l) => (
               <div key={l.id} className="whitespace-pre-wrap break-all">

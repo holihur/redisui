@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { SlowlogEntry } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -22,6 +23,7 @@ export function SlowlogDialog({
 }) {
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
   const [entries, setEntries] = useState<SlowlogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,16 +50,20 @@ export function SlowlogDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Slow log</DialogTitle>
+          <DialogTitle>{t("Slow log")}</DialogTitle>
           <DialogDescription>
-            The most recent commands that exceeded the server's slowlog
-            threshold (db{activeDb}).
+            {t(
+              "The most recent commands that exceeded the server's slowlog threshold (db{db}).",
+              { db: activeDb },
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted-foreground">
-            {entries.length} entr{entries.length === 1 ? "y" : "ies"}
+            {t(entries.length === 1 ? "{count} entry" : "{count} entries", {
+              count: entries.length,
+            })}
           </span>
           <Button
             variant="outline"
@@ -70,7 +76,7 @@ export function SlowlogDialog({
             ) : (
               <RefreshCw className="size-3.5" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </div>
 
@@ -80,17 +86,17 @@ export function SlowlogDialog({
           <ScrollArea className="h-[55svh]">
             {entries.length === 0 && !loading ? (
               <p className="py-10 text-center text-xs text-muted-foreground">
-                No slow commands recorded.
+                {t("No slow commands recorded.")}
               </p>
             ) : (
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-background text-left text-muted-foreground">
                   <tr className="border-b">
-                    <th className="px-2 py-1.5 font-medium">Time</th>
-                    <th className="px-2 py-1.5 font-medium">Duration</th>
-                    <th className="px-2 py-1.5 font-medium">Command</th>
+                    <th className="px-2 py-1.5 font-medium">{t("Time")}</th>
+                    <th className="px-2 py-1.5 font-medium">{t("Duration")}</th>
+                    <th className="px-2 py-1.5 font-medium">{t("Command")}</th>
                     <th className="hidden px-2 py-1.5 font-medium sm:table-cell">
-                      Client
+                      {t("Client")}
                     </th>
                   </tr>
                 </thead>

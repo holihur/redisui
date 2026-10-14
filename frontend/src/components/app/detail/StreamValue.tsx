@@ -1,15 +1,17 @@
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/lib/i18n";
 import type { StreamEntry } from "@/lib/types";
 import { asArray, type EditorProps } from "./types";
 
 export function StreamValue({ detail }: EditorProps) {
+  const { t } = useI18n();
   const entries = asArray<StreamEntry>(detail.value);
 
   return (
     <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
       {entries.length === 0 ? (
         <p className="py-10 text-center text-xs text-muted-foreground">
-          Empty stream
+          {t("Empty stream")}
         </p>
       ) : (
         <div className="divide-y">

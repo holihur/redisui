@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { Connection, PublicUser } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -37,6 +38,7 @@ function ScopePicker({
   selected: string[];
   onChange: (next: string[]) => void;
 }) {
+  const { t } = useI18n();
   const toggle = (id: string) =>
     onChange(
       selected.includes(id)
@@ -46,7 +48,7 @@ function ScopePicker({
   return (
     <div className="grid gap-1 rounded-md border p-2">
       {connections.length === 0 ? (
-        <p className="text-xs text-muted-foreground">No connections defined</p>
+        <p className="text-xs text-muted-foreground">{t("No connections defined")}</p>
       ) : (
         connections.map((c) => (
           <label
@@ -62,7 +64,7 @@ function ScopePicker({
         ))
       )}
       <p className="mt-1 text-[11px] text-muted-foreground">
-        Leave all unchecked to grant access to every connection.
+        {t("Leave all unchecked to grant access to every connection.")}
       </p>
     </div>
   );
@@ -76,6 +78,7 @@ export function UsersDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const currentUser = useAppStore((s) => s.username);
+  const { t } = useI18n();
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,13 +111,13 @@ export function UsersDialog({
 
   const create = async () => {
     if (!form.username.trim() || !form.password) {
-      toast.error("Username and password are required");
+      toast.error(t("Username and password are required"));
       return;
     }
     setBusy(true);
     try {
       await api.createUser({ ...form, username: form.username.trim() });
-      toast.success(`Created user ${form.username.trim()}`);
+      toast.success(t("Created user {name}", { name: form.username.trim() }));
       setForm({ username: "", password: "", role: "viewer", connections: [] });
       await load();
     } catch (e) {
@@ -127,7 +130,7 @@ export function UsersDialog({
   const changeRole = async (username: string, role: string) => {
     try {
       await api.updateUser(username, { role });
-      toast.success(`Updated ${username}`);
+      toast.success(t("Updated {name}", { name: username }));
       await load();
     } catch (e) {
       toast.error(errText(e));
@@ -146,7 +149,7 @@ export function UsersDialog({
   const remove = async (username: string) => {
     try {
       await api.deleteUser(username);
-      toast.success(`Deleted ${username}`);
+      toast.success(t("Deleted {name}", { name: username }));
       await load();
     } catch (e) {
       toast.error(errText(e));
@@ -157,10 +160,11 @@ export function UsersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88svh] sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Users</DialogTitle>
+          <DialogTitle>{t("Users")}</DialogTitle>
           <DialogDescription>
-            Local accounts with role-based access. Admins manage everything;
-            operators read/write their connections; viewers are read-only.
+            {t(
+              "Local accounts with role-based access. Admins manage everything; operators read/write their connections; viewers are read-only.",
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -172,7 +176,7 @@ export function UsersDialog({
               <div className="rounded-lg border p-3">
                 <p className="mb-2 flex items-center gap-1.5 text-xs font-medium">
                   <UserPlus className="size-3.5" />
-                  New user
+                  {t("New user")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Input
@@ -185,7 +189,7 @@ export function UsersDialog({
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    placeholder="password (min 6 chars)"
+                    placeholder={t("password (min 6 chars)")}
                     className="h-8"
                     autoComplete="new-password"
                   />
@@ -209,7 +213,7 @@ export function UsersDialog({
                   <div />
                 </div>
                 <div className="mt-2">
-                  <Label className="mb-1 block text-xs">Connection scope</Label>
+                  <Label className="mb-1 block text-xs">{t("Connection scope")}</Label>
                   <ScopePicker
                     connections={connections}
                     selected={form.connections}
@@ -225,14 +229,14 @@ export function UsersDialog({
                     ) : (
                       <Plus className="size-3.5" />
                     )}
-                    Create user
+                    {t("Create user")}
                   </Button>
                 </div>
               </div>
 
               <div>
                 <p className="mb-2 text-xs font-medium">
-                  {users.length} account{users.length === 1 ? "" : "s"}
+                  {t("{count} accounts", { count: users.length })}
                 </p>
                 <div className="space-y-2">
                   {loading && users.length === 0 ? (
@@ -249,7 +253,7 @@ export function UsersDialog({
                           <span className="font-medium">{u.username}</span>
                           {u.username === currentUser ? (
                             <Badge variant="secondary" className="text-[10px]">
-                              you
+                              {t("you")}
                             </Badge>
                           ) : null}
                           <div className="ml-auto flex items-center gap-2">
@@ -271,7 +275,7 @@ export function UsersDialog({
                             <Button
                               variant="ghost"
                               size="icon-sm"
-                              title="Delete user"
+                              title={t("Delete user")}
                               disabled={u.username === currentUser}
                               onClick={() => void remove(u.username)}
                             >

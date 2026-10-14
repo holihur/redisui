@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { BarChart } from "@/components/app/charts/Chart";
 import { formatBytes, typeColor } from "@/lib/format";
@@ -35,6 +36,7 @@ export function MemoryDialog({
 }) {
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
   const [report, setReport] = useState<MemoryReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -60,9 +62,9 @@ export function MemoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Memory analysis</DialogTitle>
+          <DialogTitle>{t("Memory analysis")}</DialogTitle>
           <DialogDescription>
-            Server memory usage and the largest keys found in a random sample.
+            {t("Server memory usage and the largest keys found in a random sample.")}
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +80,7 @@ export function MemoryDialog({
             ) : (
               <RefreshCw className="size-3.5" />
             )}
-            Refresh
+            {t("Refresh")}
           </Button>
         </div>
 
@@ -115,9 +117,9 @@ export function MemoryDialog({
 
                 <div>
                   <p className="mb-2 text-xs font-medium">
-                    Largest keys{" "}
+                    {t("Largest keys")}{" "}
                     <span className="font-normal text-muted-foreground">
-                      (sampled {report.sampled})
+                      {t("(sampled {count})", { count: report.sampled })}
                     </span>
                   </p>
                   <BarChart
@@ -131,10 +133,10 @@ export function MemoryDialog({
                   <table className="w-full text-xs">
                     <thead className="text-left text-muted-foreground">
                       <tr className="border-b">
-                        <th className="px-2 py-1.5 font-medium">Key</th>
-                        <th className="px-2 py-1.5 font-medium">Type</th>
+                        <th className="px-2 py-1.5 font-medium">{t("Key")}</th>
+                        <th className="px-2 py-1.5 font-medium">{t("Type")}</th>
                         <th className="px-2 py-1.5 text-right font-medium">
-                          Size
+                          {t("Size")}
                         </th>
                       </tr>
                     </thead>

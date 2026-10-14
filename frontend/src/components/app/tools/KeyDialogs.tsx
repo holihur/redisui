@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { ExportFile } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -34,6 +35,7 @@ export function ExportDialog({
   const activeDb = useAppStore((s) => s.activeDb);
   const [match, setMatch] = useState("*");
   const [limit, setLimit] = useState("1000");
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -62,7 +64,7 @@ export function ExportDialog({
       a.download = `redisui-export-db${activeDb}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success(`Exported ${data.exported} keys`);
+      toast.success(t("Exported {count} keys", { count: data.exported }));
       onOpenChange(false);
     } catch (e) {
       toast.error(errText(e));
@@ -75,14 +77,14 @@ export function ExportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Export keys</DialogTitle>
+          <DialogTitle>{t("Export keys")}</DialogTitle>
           <DialogDescription>
-            Dump matching keys (with TTLs) to a JSON file you can import later.
+            {t("Dump matching keys (with TTLs) to a JSON file you can import later.")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="export-match">Pattern</Label>
+            <Label htmlFor="export-match">{t("Pattern")}</Label>
             <Input
               id="export-match"
               value={match}
@@ -92,7 +94,7 @@ export function ExportDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="export-limit">Max keys</Label>
+            <Label htmlFor="export-limit">{t("Max keys")}</Label>
             <Input
               id="export-limit"
               value={limit}
@@ -104,7 +106,7 @@ export function ExportDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button disabled={busy} onClick={() => void run()}>
             {busy ? (
@@ -112,7 +114,7 @@ export function ExportDialog({
             ) : (
               <Download className="size-4" />
             )}
-            Export
+            {t("Export")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -136,6 +138,7 @@ export function ImportDialog({
   const afterMutation = useAppStore((s) => s.afterMutation);
   const [file, setFile] = useState<File | null>(null);
   const [replace, setReplace] = useState(true);
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -152,16 +155,19 @@ export function ImportDialog({
       const parsed = JSON.parse(await file.text()) as ExportFile;
       const keys = parsed.keys ?? [];
       if (keys.length === 0) {
-        toast.error("No keys found in file");
+        toast.error(t("No keys found in file"));
         return;
       }
       const res = await api.importKeys(session.id, activeDb, keys, replace);
       if (res.errors.length > 0) {
-        toast.warning(`Imported ${res.imported} keys`, {
-          description: `${res.errors.length} failed, e.g. ${res.errors[0]}`,
+        toast.warning(t("Imported {count} keys", { count: res.imported }), {
+          description: t("{failed} failed, e.g. {first}", {
+            failed: res.errors.length,
+            first: res.errors[0],
+          }),
         });
       } else {
-        toast.success(`Imported ${res.imported} keys`);
+        toast.success(t("Imported {count} keys", { count: res.imported }));
       }
       await afterMutation();
       onOpenChange(false);
@@ -176,14 +182,16 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Import keys</DialogTitle>
+          <DialogTitle>{t("Import keys")}</DialogTitle>
           <DialogDescription>
-            Restore a previously exported JSON file into db{activeDb}.
+            {t("Restore a previously exported JSON file into db{db}.", {
+              db: activeDb,
+            })}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="import-file">Export file</Label>
+            <Label htmlFor="import-file">{t("Export file")}</Label>
             <Input
               id="import-file"
               type="file"
@@ -196,12 +204,12 @@ export function ImportDialog({
               checked={replace}
               onCheckedChange={(v) => setReplace(v === true)}
             />
-            Overwrite existing keys (RESTORE REPLACE)
+            {t("Overwrite existing keys (RESTORE REPLACE)")}
           </label>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button disabled={busy || !file} onClick={() => void run()}>
             {busy ? (
@@ -209,7 +217,7 @@ export function ImportDialog({
             ) : (
               <Upload className="size-4" />
             )}
-            Import
+            {t("Import")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -233,6 +241,7 @@ export function BulkDeleteDialog({
   const afterMutation = useAppStore((s) => s.afterMutation);
   const [match, setMatch] = useState("");
   const [confirm, setConfirm] = useState("");
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -247,7 +256,7 @@ export function BulkDeleteDialog({
     setBusy(true);
     try {
       const res = await api.bulkDelete(session.id, activeDb, match);
-      toast.success(`Deleted ${res.deleted} keys`);
+      toast.success(t("Deleted {count} keys", { count: res.deleted }));
       await afterMutation();
       onOpenChange(false);
     } catch (e) {
@@ -263,16 +272,18 @@ export function BulkDeleteDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="size-4 text-destructive" />
-            Delete keys by pattern
+            {t("Delete keys by pattern")}
           </DialogTitle>
           <DialogDescription>
-            Permanently delete every key in db{activeDb} matching the pattern.
-            This cannot be undone.
+            {t(
+              "Permanently delete every key in db{db} matching the pattern. This cannot be undone.",
+              { db: activeDb },
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label htmlFor="bulk-match">Pattern</Label>
+            <Label htmlFor="bulk-match">{t("Pattern")}</Label>
             <Input
               id="bulk-match"
               value={match}
@@ -283,8 +294,9 @@ export function BulkDeleteDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="bulk-confirm">
-              Type <span className="font-mono">{match || "the pattern"}</span> to
-              confirm
+              {t("Type {pattern} to confirm", {
+                pattern: match || t("the pattern"),
+              })}
             </Label>
             <Input
               id="bulk-confirm"
@@ -296,7 +308,7 @@ export function BulkDeleteDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             variant="destructive"
@@ -304,7 +316,7 @@ export function BulkDeleteDialog({
             onClick={() => void run()}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            Delete keys
+            {t("Delete keys")}
           </Button>
         </DialogFooter>
       </DialogContent>

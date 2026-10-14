@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { Mutation } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -32,6 +33,7 @@ interface Props {
 type CreateType = "string" | "hash" | "list" | "set" | "zset";
 
 export function NewKeyDialog({ open, onOpenChange }: Props) {
+  const { t } = useI18n();
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
   const afterMutation = useAppStore((s) => s.afterMutation);
@@ -61,7 +63,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
   const submit = async () => {
     if (!session) return;
     if (!key.trim()) {
-      toast.error("Key name is required");
+      toast.error(t("Key name is required"));
       return;
     }
     const base: Omit<Mutation, "action"> = { db: activeDb, key: key.trim(), type };
@@ -80,7 +82,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
       }
       case "hash":
         if (!field.trim()) {
-          toast.error("Field is required");
+          toast.error(t("Field is required"));
           return;
         }
         m = { ...base, action: "hash.set", field: field.trim(), value };
@@ -109,7 +111,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
     setSaving(true);
     try {
       await api.mutate(session.id, m);
-      toast.success("Key created");
+      toast.success(t("Key created"));
       onOpenChange(false);
       await afterMutation();
       await selectKey(key.trim());
@@ -124,17 +126,19 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New key</DialogTitle>
+          <DialogTitle>{t("New key")}</DialogTitle>
           <DialogDescription>
-            Create a key in db{activeDb}. Empty collections cannot be stored, so
-            the first element is required.
+            {t(
+              "Create a key in db{db}. Empty collections cannot be stored, so the first element is required.",
+              { db: activeDb },
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
           <div className="grid grid-cols-[1fr_9rem] gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="new-key">Key name</Label>
+              <Label htmlFor="new-key">{t("Key name")}</Label>
               <Input
                 id="new-key"
                 value={key}
@@ -144,7 +148,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Type</Label>
+              <Label>{t("Type")}</Label>
               <Select
                 value={type}
                 onValueChange={(v) => setType(v as CreateType)}
@@ -165,7 +169,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
           {type === "hash" ? (
             <div className="grid gap-2">
-              <Label htmlFor="new-field">Field</Label>
+              <Label htmlFor="new-field">{t("Field")}</Label>
               <Input
                 id="new-field"
                 value={field}
@@ -177,7 +181,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
           <div className="grid gap-2">
             <Label htmlFor="new-value">
-              {type === "zset" ? "Member" : "Value"}
+              {t(type === "zset" ? "Member" : "Value")}
             </Label>
             <Textarea
               id="new-value"
@@ -189,7 +193,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
           {type === "zset" ? (
             <div className="grid gap-2">
-              <Label htmlFor="new-score">Score</Label>
+              <Label htmlFor="new-score">{t("Score")}</Label>
               <Input
                 id="new-score"
                 value={score}
@@ -201,14 +205,14 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
           {type === "list" ? (
             <div className="grid gap-2">
-              <Label>Push direction</Label>
+              <Label>{t("Push direction")}</Label>
               <Select value={side} onValueChange={setSide}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="right">Right (RPUSH)</SelectItem>
-                  <SelectItem value="left">Left (LPUSH)</SelectItem>
+                  <SelectItem value="right">{t("Right (RPUSH)")}</SelectItem>
+                  <SelectItem value="left">{t("Left (LPUSH)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -216,13 +220,13 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
           {type === "string" ? (
             <div className="grid gap-2">
-              <Label htmlFor="new-ttl">TTL (seconds, optional)</Label>
+              <Label htmlFor="new-ttl">{t("TTL (seconds, optional)")}</Label>
               <Input
                 id="new-ttl"
                 value={ttl}
                 onChange={(e) => setTtl(e.target.value)}
                 inputMode="numeric"
-                placeholder="no expire"
+                placeholder={t("no expire")}
                 className="font-mono"
               />
             </div>
@@ -231,7 +235,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={() => void submit()} disabled={saving}>
             {saving ? (
@@ -239,7 +243,7 @@ export function NewKeyDialog({ open, onOpenChange }: Props) {
             ) : (
               <Plus className="size-4" />
             )}
-            Create
+            {t("Create")}
           </Button>
         </DialogFooter>
       </DialogContent>

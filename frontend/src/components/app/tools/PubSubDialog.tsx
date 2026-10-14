@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type { PubSubEvent } from "@/lib/types";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -35,6 +36,7 @@ export function PubSubDialog({
 }) {
   const session = useAppStore((s) => s.session);
   const activeDb = useAppStore((s) => s.activeDb);
+  const { t } = useI18n();
   const [channels, setChannels] = useState("");
   const [patterns, setPatterns] = useState("");
   const [pubChannel, setPubChannel] = useState("");
@@ -69,7 +71,7 @@ export function PubSubDialog({
     const ch = channels.split(",").map((s) => s.trim()).filter(Boolean);
     const pt = patterns.split(",").map((s) => s.trim()).filter(Boolean);
     if (ch.length === 0 && pt.length === 0) {
-      toast.error("Add at least one channel or pattern");
+      toast.error(t("Add at least one channel or pattern"));
       return;
     }
     stop();
@@ -111,7 +113,7 @@ export function PubSubDialog({
         pubChannel.trim(),
         pubPayload,
       ]);
-      if (res.ok) toast.success(`Published to ${pubChannel.trim()}`);
+      if (res.ok) toast.success(t("Published to {channel}", { channel: pubChannel.trim() }));
       else toast.error(res.error ?? "Publish failed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -122,15 +124,17 @@ export function PubSubDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[88svh] sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Pub/Sub monitor</DialogTitle>
+          <DialogTitle>{t("Pub/Sub monitor")}</DialogTitle>
           <DialogDescription>
-            Live subscription to channels and patterns (db{activeDb}).
+            {t("Live subscription to channels and patterns (db{db}).", {
+              db: activeDb,
+            })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-2">
-            <Label htmlFor="ps-channels">Channels</Label>
+            <Label htmlFor="ps-channels">{t("Channels")}</Label>
             <Input
               id="ps-channels"
               value={channels}
@@ -141,7 +145,7 @@ export function PubSubDialog({
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="ps-patterns">Patterns</Label>
+            <Label htmlFor="ps-patterns">{t("Patterns")}</Label>
             <Input
               id="ps-patterns"
               value={patterns}
@@ -157,12 +161,12 @@ export function PubSubDialog({
           {running ? (
             <Button variant="destructive" size="sm" onClick={stop}>
               <Square className="size-3.5" />
-              Stop
+              {t("Stop")}
             </Button>
           ) : (
             <Button size="sm" onClick={start}>
               <Radio className="size-3.5" />
-              Subscribe
+              {t("Subscribe")}
             </Button>
           )}
           <Button
@@ -172,30 +176,31 @@ export function PubSubDialog({
             disabled={messages.length === 0}
           >
             <Eraser className="size-3.5" />
-            Clear
+            {t("Clear")}
           </Button>
           <span className="ml-auto text-xs text-muted-foreground">
-            {running ? "Listening…" : "Stopped"} · {messages.length} messages
+            {running ? t("Listening…") : t("Stopped")} ·{" "}
+            {t("{count} messages", { count: messages.length })}
           </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium">Publish</span>
+          <span className="text-xs font-medium">{t("Publish")}</span>
           <Input
             value={pubChannel}
             onChange={(e) => setPubChannel(e.target.value)}
-            placeholder="channel"
+            placeholder={t("channel")}
             className="h-8 w-36 font-mono text-xs"
           />
           <Input
             value={pubPayload}
             onChange={(e) => setPubPayload(e.target.value)}
-            placeholder="message"
+            placeholder={t("message")}
             className="h-8 min-w-32 flex-1 font-mono text-xs"
           />
           <Button size="sm" variant="outline" onClick={() => void publish()}>
             <Send className="size-3.5" />
-            Publish
+            {t("Publish")}
           </Button>
         </div>
 
@@ -205,7 +210,7 @@ export function PubSubDialog({
         >
           {messages.length === 0 ? (
             <p className="px-1 py-2 text-muted-foreground">
-              No messages yet.
+              {t("No messages yet.")}
             </p>
           ) : (
             messages.map((m) => (

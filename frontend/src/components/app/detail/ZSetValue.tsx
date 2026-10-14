@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 import type { ZMember } from "@/lib/types";
 import { asArray, type EditorProps } from "./types";
 
 export function ZSetValue({ detail, busy, mutate }: EditorProps) {
+  const { t } = useI18n();
   const original = asArray<ZMember>(detail.value);
   const [rows, setRows] = useState<ZMember[]>(original);
 
@@ -33,8 +35,8 @@ export function ZSetValue({ detail, busy, mutate }: EditorProps) {
         <table className="w-full border-collapse text-xs">
           <thead className="sticky top-0 bg-background">
             <tr className="border-b text-left text-muted-foreground">
-              <th className="px-3 py-1.5 font-medium">Member</th>
-              <th className="w-28 px-3 py-1.5 font-medium">Score</th>
+              <th className="px-3 py-1.5 font-medium">{t("Member")}</th>
+              <th className="w-28 px-3 py-1.5 font-medium">{t("Score")}</th>
               <th className="w-10 px-2 py-1.5" />
             </tr>
           </thead>
@@ -76,11 +78,11 @@ export function ZSetValue({ detail, busy, mutate }: EditorProps) {
           onClick={() => setRows((r) => [...r, { member: "", score: 0 }])}
         >
           <Plus className="size-3.5" />
-          Add member
+          {t("Add member")}
         </Button>
         <Button size="sm" disabled={busy} onClick={() => void save()}>
           <Check className="size-3.5" />
-          Save changes
+          {t("Save changes")}
         </Button>
       </div>
     </div>
