@@ -89,3 +89,27 @@ func TestParseInfo(t *testing.T) {
 		t.Fatalf("memory section: %#v", sections["memory"])
 	}
 }
+
+func TestClusterCursorRoundTrip(t *testing.T) {
+	encoded := encodeClusterCursors(clusterCursors{
+		"127.0.0.1:7001": 0,
+		"127.0.0.1:7002": 42,
+		"127.0.0.1:7003": 768,
+	})
+	if encoded == "0" {
+		t.Fatal("expected a non-empty cursor")
+	}
+	got := decodeClusterCursors(encoded)
+	if got["127.0.0.1:7002"] != 42 || got["127.0.0.1:7003"] != 768 {
+		t.Fatalf("decoded wrong: %#v", got)
+	}
+	if _, ok := got["127.0.0.1:7001"]; ok {
+		t.Fatal("zero cursors should be pruned")
+	}
+	if encodeClusterCursors(clusterCursors{}) != "0" {
+		t.Fatal("empty cursors should encode as 0")
+	}
+	if len(decodeClusterCursors("0")) != 0 || len(decodeClusterCursors("garbage")) != 0 {
+		t.Fatal("invalid cursors should decode to empty")
+	}
+}

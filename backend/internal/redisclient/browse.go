@@ -2,9 +2,12 @@ package redisclient
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -54,9 +57,6 @@ type KeyDetail struct {
 
 // ScanKeys performs a cursor-based SCAN (optionally filtered by type).
 func (s *Session) ScanKeys(ctx context.Context, db int, cursor uint64, match string, count int64, typeFilter string, withSize bool) ([]KeyInfo, uint64, error) {
-	if s.info.EffectiveMode() == model.ModeCluster {
-		return s.scanCluster(ctx, match, count, withSize)
-	}
 	cli := s.client(db)
 	if match == "" {
 		match = "*"
@@ -128,10 +128,45 @@ func (s *Session) enrichKeys(ctx context.Context, cli redis.UniversalClient, key
 	return infos
 }
 
-// scanCluster aggregates a bounded key sample across all cluster masters.
-// Cluster-wide cursor pagination is not supported; the returned cursor is
-// always 0 so callers treat the page as complete.
-func (s *Session) scanCluster(ctx context.Context, match string, count int64, withSize bool) ([]KeyInfo, uint64, error) {
+// IsCluster reports whether the session targets a Redis cluster.
+func (s *Session) IsCluster() bool {
+	return s.info.EffectiveMode() == model.ModeCluster
+}
+
+// clusterCursors maps a master address to its SCAN cursor.
+type clusterCursors map[string]uint64
+
+func encodeClusterCursors(m clusterCursors) string {
+	pruned := clusterCursors{}
+	for addr, cur := range m {
+		if cur != 0 {
+			pruned[addr] = cur
+		}
+	}
+	if len(pruned) == 0 {
+		return "0"
+	}
+	b, _ := json.Marshal(pruned)
+	return "c:" + base64.RawURLEncoding.EncodeToString(b)
+}
+
+func decodeClusterCursors(s string) clusterCursors {
+	out := clusterCursors{}
+	if s == "" || s == "0" || !strings.HasPrefix(s, "c:") {
+		return out
+	}
+	b, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(s, "c:"))
+	if err != nil {
+		return out
+	}
+	_ = json.Unmarshal(b, &out)
+	return out
+}
+
+// ScanClusterKeys performs a true cluster-wide SCAN by advancing a cursor on
+// every master once per page and packing the per-node cursors into an opaque
+// cursor string. It returns "0" once every master has been exhausted.
+func (s *Session) ScanClusterKeys(ctx context.Context, match string, count int64, typeFilter string, withSize bool, cursor string) ([]KeyInfo, string, error) {
 	if match == "" {
 		match = "*"
 	}
@@ -140,34 +175,57 @@ func (s *Session) scanCluster(ctx context.Context, match string, count int64, wi
 	}
 	cc, ok := s.client(0).(*redis.ClusterClient)
 	if !ok {
-		return []KeyInfo{}, 0, nil
+		return []KeyInfo{}, "0", nil
 	}
+
+	cursors := decodeClusterCursors(cursor)
+	var addrs []string
+	_ = cc.ForEachMaster(ctx, func(_ context.Context, node *redis.Client) error {
+		addrs = append(addrs, node.Options().Addr)
+		return nil
+	})
+	if len(addrs) == 0 {
+		return []KeyInfo{}, "0", nil
+	}
+	perNode := count / int64(len(addrs))
+	if perNode < 1 {
+		perNode = 1
+	}
+
 	seen := map[string]struct{}{}
 	keys := []string{}
 	_ = cc.ForEachMaster(ctx, func(ctx context.Context, node *redis.Client) error {
-		if int64(len(keys)) >= count {
-			return nil
+		addr := node.Options().Addr
+		cur := cursors[addr]
+		var (
+			batch []string
+			next  uint64
+			err   error
+		)
+		if typeFilter != "" && typeFilter != "all" {
+			res, derr := node.Do(ctx, "SCAN", strconv.FormatUint(cur, 10), "MATCH", match, "COUNT", perNode, "TYPE", typeFilter).Result()
+			if derr == nil {
+				batch, next, err = parseScanReply(res)
+			} else {
+				err = derr
+			}
+		} else {
+			batch, next, err = node.Scan(ctx, cur, match, perNode).Result()
 		}
-		var cursor uint64
-		for {
-			batch, next, err := node.Scan(ctx, cursor, match, count).Result()
-			if err != nil {
-				return nil // skip an unreachable node
-			}
-			for _, k := range batch {
-				if _, dup := seen[k]; !dup {
-					seen[k] = struct{}{}
-					keys = append(keys, k)
-				}
-			}
-			cursor = next
-			if cursor == 0 || int64(len(keys)) >= count {
-				break
+		if err != nil {
+			return nil // skip an unreachable node, keep its cursor
+		}
+		cursors[addr] = next
+		for _, k := range batch {
+			if _, dup := seen[k]; !dup {
+				seen[k] = struct{}{}
+				keys = append(keys, k)
 			}
 		}
 		return nil
 	})
-	return s.enrichKeys(ctx, s.client(0), keys, withSize), 0, nil
+
+	return s.enrichKeys(ctx, s.client(0), keys, withSize), encodeClusterCursors(cursors), nil
 }
 
 // GetKey loads a page of a key's value.

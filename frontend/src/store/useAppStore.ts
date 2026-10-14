@@ -23,7 +23,7 @@ interface AppState {
   activeDb: number;
 
   keys: KeyInfo[];
-  keyCursor: number;
+  keyCursor: string;
   keyMatch: string;
   keyType: RedisTypeFilter;
   keysLoading: boolean;
@@ -121,7 +121,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeDb: 0,
 
   keys: [],
-  keyCursor: 0,
+  keyCursor: "0",
   keyMatch: "*",
   keyType: "all",
   keysLoading: false,
@@ -182,7 +182,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         selectedKey: null,
         keyDetail: null,
         keys: [],
-        keyCursor: 0,
+        keyCursor: "0",
         keysDone: false,
         sidebarOpen: false,
       });
@@ -210,7 +210,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       databases: [],
       activeDb: 0,
       keys: [],
-      keyCursor: 0,
+      keyCursor: "0",
       keysDone: false,
       selectedKey: null,
       keyDetail: null,
@@ -234,7 +234,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       activeDb: db,
       keys: [],
-      keyCursor: 0,
+      keyCursor: "0",
       keysDone: false,
       selectedKey: null,
       keyDetail: null,
@@ -249,10 +249,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!session) return;
     set({
       keysLoading: true,
-      ...(reset ? { keys: [], keyCursor: 0, keysDone: false, keysScanned: 0 } : {}),
+      ...(reset ? { keys: [], keyCursor: "0", keysDone: false, keysScanned: 0 } : {}),
     });
     try {
-      const cursor = reset ? 0 : keyCursor;
+      const cursor = reset ? "0" : keyCursor;
       const res = await api.scanKeys(session.id, {
         db: activeDb,
         cursor,
@@ -270,7 +270,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         keys: merged,
         keyCursor: res.cursor,
-        keysDone: res.cursor === 0,
+        keysDone: res.cursor === "0",
         keysLoading: false,
         keysScanned: merged.length,
       });

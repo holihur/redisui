@@ -199,14 +199,14 @@ export const api = {
     sid: string,
     opts: {
       db: number;
-      cursor?: number;
+      cursor?: string;
       match?: string;
       count?: number;
       type?: string;
       size?: boolean;
     },
   ) =>
-    request<{ keys: KeyInfo[]; cursor: number }>(
+    request<{ keys: KeyInfo[]; cursor: string }>(
       `/sessions/${sid}/keys${qs({
         db: opts.db,
         cursor: opts.cursor,

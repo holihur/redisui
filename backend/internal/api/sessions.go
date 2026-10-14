@@ -112,13 +112,27 @@ func (s *Server) scanKeys(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	cursor, _ := strconv.ParseUint(q.Get("cursor"), 10, 64)
 	withSize := q.Get("size") == "1" || q.Get("size") == "true"
+	match := q.Get("match")
+	typeFilter := q.Get("type")
+	count := int64(queryInt(r, "count", 100))
 
 	ctx, cancel := contextWithTimeout(r, 30*time.Second)
 	defer cancel()
 
-	keys, next, err := sess.ScanKeys(ctx, queryInt(r, "db", 0), cursor, q.Get("match"), int64(queryInt(r, "count", 100)), q.Get("type"), withSize)
+	var (
+		keys []redisclient.KeyInfo
+		next string
+		err  error
+	)
+	if sess.IsCluster() {
+		keys, next, err = sess.ScanClusterKeys(ctx, match, count, typeFilter, withSize, q.Get("cursor"))
+	} else {
+		cursor, _ := strconv.ParseUint(q.Get("cursor"), 10, 64)
+		var n uint64
+		keys, n, err = sess.ScanKeys(ctx, queryInt(r, "db", 0), cursor, match, count, typeFilter, withSize)
+		next = strconv.FormatUint(n, 10)
+	}
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
