@@ -15,6 +15,7 @@ import type {
   ModuleInfo,
   Mutation,
   PublicUser,
+  ProxySnapshot,
   SchemaField,
   SearchResult,
   ServerInfo,
@@ -150,6 +151,7 @@ export const api = {
     }),
 
   updateStatus: () => request<UpdateStatus>("/update"),
+  proxyStatus: () => request<ProxySnapshot>("/proxy"),
   updateCheck: () =>
     request<{ ok: boolean; error?: string; status: UpdateStatus }>(
       "/update/check",

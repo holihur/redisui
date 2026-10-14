@@ -17,6 +17,7 @@ import (
 
 	"redisui/internal/account"
 	"redisui/internal/api"
+	"redisui/internal/proxy"
 	"redisui/internal/secret"
 	"redisui/internal/session"
 	"redisui/internal/store"
@@ -41,6 +42,8 @@ func main() {
 	updateInterval := flag.Duration("update-interval", 10*time.Minute, "how often to check for updates")
 	updateAuto := flag.Bool("update-auto", true, "automatically download and apply updates when available")
 	noUpdate := flag.Bool("no-update", false, "disable the self-update checker")
+	proxyAddr := flag.String("proxy-addr", "", "optional RESP proxy listen address, e.g. 0.0.0.0:6380")
+	proxyTarget := flag.String("proxy-target", "", "Redis target for the proxy (host:port)")
 	printVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -149,6 +152,18 @@ func main() {
 		log.Printf("self-update disabled (-no-update)")
 	}
 
+	// --- optional RESP proxy -------------------------------------------------
+	var respProxy *proxy.Proxy
+	if *proxyAddr != "" && *proxyTarget != "" {
+		respProxy = proxy.New(*proxyAddr, *proxyTarget)
+		if err := respProxy.Start(updateCtx); err != nil {
+			log.Fatalf("start proxy: %v", err)
+		}
+		log.Printf("RESP proxy listening on %s -> %s", *proxyAddr, *proxyTarget)
+	} else if *proxyAddr != "" || *proxyTarget != "" {
+		log.Printf("WARNING: both -proxy-addr and -proxy-target are required to enable the proxy")
+	}
+
 	srv := &http.Server{
 		Addr: *addr,
 		Handler: api.New(st, mgr, api.Options{
@@ -157,6 +172,7 @@ func main() {
 			Accounts:      accounts,
 			StaticFS:      staticFS,
 			Update:        updater,
+			Proxy:         respProxy,
 			CORSOrigin:    *corsOrigin,
 			TrustProxy:    *trustProxy,
 		}),

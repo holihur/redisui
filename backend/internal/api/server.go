@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"redisui/internal/account"
+	"redisui/internal/proxy"
 	"redisui/internal/session"
 	"redisui/internal/store"
 	"redisui/internal/update"
@@ -28,6 +29,7 @@ type Server struct {
 	limiter       *authLimiter
 	trustProxy    bool
 	updater       *update.Updater
+	proxy         *proxy.Proxy
 }
 
 // Options configures the HTTP server.
@@ -43,6 +45,8 @@ type Options struct {
 	StaticFS fs.FS
 	// Update reports self-update status when non-nil.
 	Update *update.Updater
+	// Proxy exposes RESP proxy metrics when non-nil.
+	Proxy *proxy.Proxy
 	// CORSOrigin, when set, adds CORS headers (e.g. "*" or a single origin).
 	CORSOrigin string
 	// TrustProxy honors X-Forwarded-For / X-Real-IP for the login limiter.
@@ -61,6 +65,7 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 		limiter:       newAuthLimiter(),
 		trustProxy:    opts.TrustProxy,
 		updater:       opts.Update,
+		proxy:         opts.Proxy,
 	}
 
 	mux := http.NewServeMux()
@@ -79,6 +84,7 @@ func New(st *store.Store, mgr *session.Manager, opts Options) http.Handler {
 	mux.HandleFunc("GET /api/update", s.updateStatus)
 	mux.HandleFunc("POST /api/update/check", s.updateCheck)
 	mux.HandleFunc("POST /api/update/apply", s.updateApply)
+	mux.HandleFunc("GET /api/proxy", s.proxyStatus)
 
 	mux.HandleFunc("GET /api/connections", s.listConnections)
 	mux.HandleFunc("POST /api/connections", s.createConnection)

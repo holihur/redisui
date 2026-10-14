@@ -9,6 +9,7 @@ import { SearchDialog } from "./SearchDialog";
 import { UsersDialog } from "./UsersDialog";
 import { AboutDialog } from "./AboutDialog";
 import { ScriptDialog } from "./ScriptDialog";
+import { ProxyDialog } from "./ProxyDialog";
 
 /** Renders whichever diagnostic tool panel is currently active. */
 export function ToolDialogs() {
@@ -28,6 +29,7 @@ export function ToolDialogs() {
       <MonitorDialog open={open("monitor")} onOpenChange={onChange("monitor")} />
       <SearchDialog open={open("search")} onOpenChange={onChange("search")} />
       <ScriptDialog open={open("script")} onOpenChange={onChange("script")} />
+      <ProxyDialog open={open("proxy")} onOpenChange={onChange("proxy")} />
       <UsersDialog open={open("users")} onOpenChange={onChange("users")} />
       <AboutDialog open={open("about")} onOpenChange={onChange("about")} />
     </>

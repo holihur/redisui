@@ -5,6 +5,7 @@ import {
   Download,
   Info,
   Menu,
+  Network,
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
@@ -219,6 +220,10 @@ export function AppHeader() {
             <DropdownMenuItem onSelect={() => setActiveTool("script")}>
               <Code2 className="size-4" />
               {t("Lua script")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveTool("proxy")}>
+              <Network className="size-4" />
+              {t("RESP proxy")}
             </DropdownMenuItem>
             {role === "admin" ? (
               <>

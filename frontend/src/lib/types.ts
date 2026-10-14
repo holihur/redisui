@@ -214,7 +214,37 @@ export type ToolKey =
   | "search"
   | "users"
   | "script"
+  | "proxy"
   | "about";
+
+export interface ProxyBucket {
+  t: number;
+  up: number;
+  down: number;
+}
+
+export interface ProxyConn {
+  id: number;
+  remote: string;
+  startedAt: number;
+  up: number;
+  down: number;
+  commands: number;
+  lastCommand: string;
+}
+
+export interface ProxySnapshot {
+  running: boolean;
+  addr?: string;
+  target?: string;
+  active?: number;
+  total?: number;
+  up?: number;
+  down?: number;
+  commands?: number;
+  conns?: ProxyConn[];
+  series?: ProxyBucket[];
+}
 
 export type UserRole = "admin" | "operator" | "viewer";
 

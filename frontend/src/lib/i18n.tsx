@@ -97,6 +97,23 @@ const zh: Record<string, string> = {
   "Profiler (MONITOR)": "性能分析 (MONITOR)",
   "Search (RediSearch)": "搜索 (RediSearch)",
   "Lua script": "Lua 脚本",
+  "RESP proxy": "RESP 代理",
+  "Transparent Redis protocol proxy: point other apps here to record uplink/downlink traffic.":
+    "透明 Redis 协议代理：让其它应用连到这里，即可记录上行/下行流量。",
+  "Proxy is disabled. Start the server with -proxy-addr and -proxy-target to enable it.":
+    "代理未启用。启动服务时传入 -proxy-addr 与 -proxy-target 即可开启。",
+  Listen: "监听",
+  Target: "目标",
+  "Active connections": "活动连接",
+  "Total connections": "累计连接",
+  Uplink: "上行",
+  Downlink: "下行",
+  Commands: "命令数",
+  "Uplink (bytes/s)": "上行 (字节/秒)",
+  "Downlink (bytes/s)": "下行 (字节/秒)",
+  Remote: "远端",
+  Uptime: "持续时长",
+  "Last command": "最近命令",
   "Run a Lua script with EVAL; KEYS and ARGV come from the fields below.":
     "用 EVAL 运行 Lua 脚本；KEYS 与 ARGV 来自下方输入框。",
   "Keys (one per line)": "Keys（每行一个）",
