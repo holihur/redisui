@@ -180,7 +180,7 @@ func readOnlyAllowed(method, path string) bool {
 		return true
 	case http.MethodPost:
 		switch {
-		case path == "/api/auth/verify" || path == "/api/auth/logout" || path == "/api/connections/test":
+		case path == "/api/auth/verify" || path == "/api/auth/logout" || path == "/api/connections/test" || path == "/api/mcp":
 			return true
 		case strings.HasSuffix(path, "/open"):
 			return true

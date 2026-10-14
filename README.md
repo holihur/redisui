@@ -55,7 +55,8 @@ token-based remote access.
 
 **Security & remote access**
 - Multi-user accounts with roles: `admin`, `operator`, `viewer`
-- Per-user connection scope (restrict which connections a user sees)
+- Personal access tokens (PAT) with scopes (`read`/`write`/`admin`)
+- Per-user / per-token connection scope
 - Bearer/access-token authentication with brute-force login throttling
 - Optional read-only token for safe, view-only access
 - Credentials (Redis password, SSH password/key/passphrase) encrypted at rest
@@ -223,6 +224,33 @@ backend/                Go HTTP API + Redis client
 frontend/               React 19 + Vite + Tailwind v4 + Radix
   src/lib/keytree.ts    pure, tested key-tree logic
   src/components/app/   UI (tree, detail editors, tools)
+```
+
+## MCP server
+
+RedisUI exposes a Model Context Protocol endpoint at `POST /api/mcp`
+(JSON-RPC 2.0 over HTTP). Authenticate with a personal access token created
+under **Diagnostics → Access tokens** (scopes `read`, `write`, `admin`).
+
+Tools: `list_connections`, `open_session`, `close_session`, `scan_keys`,
+`get_key`, `set_key`, `delete_key`, `run_command`, `server_info`. Write tools
+require the `write` scope, and every call is limited by the token's connection
+scope (a `read` token cannot mutate anything).
+
+Example client configuration (stdio bridge via `mcp-remote`):
+
+```json
+{
+  "mcpServers": {
+    "redisui": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote", "https://redis.example.com/api/mcp",
+        "--header", "Authorization: Bearer redisui_pat_..."
+      ]
+    }
+  }
+}
 ```
 
 ## Users & roles
