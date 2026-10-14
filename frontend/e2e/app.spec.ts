@@ -17,9 +17,13 @@ test("unlock, connect and browse keys", async ({ page }) => {
   await expect(page.getByText("No active connection")).toBeVisible();
 
   // Create a direct connection to the local Redis.
-  await page.getByRole("button", { name: "New connection" }).click();
-  await page.getByLabel("Connection name").fill("local");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "New connection" })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Connection name").fill("local");
+  await dialog.getByRole("button", { name: "Create", exact: true }).click();
 
   // Open it from the sidebar.
   await page.getByRole("button", { name: /local/ }).first().click();
