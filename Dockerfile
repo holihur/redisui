@@ -3,14 +3,14 @@
 # --- frontend ---------------------------------------------------------------
 FROM node:26-alpine AS frontend
 WORKDIR /app/frontend
-RUN corepack enable
+RUN npm install -g pnpm@12.15.0
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 RUN pnpm run build
 
 # --- backend ----------------------------------------------------------------
-FROM golang:1.26 AS backend
+FROM golang:1.27-alpine AS backend
 WORKDIR /app/backend
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download

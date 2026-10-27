@@ -9,13 +9,8 @@ say() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 
 say "Building frontend"
 cd "$ROOT/frontend"
-if command -v pnpm >/dev/null 2>&1; then
-  pnpm install --frozen-lockfile
-  pnpm run build
-else
-  npm install
-  npm run build
-fi
+pnpm install --frozen-lockfile
+pnpm run build
 
 say "Embedding frontend"
 rm -rf "$ROOT/backend/web"
